@@ -1,0 +1,40 @@
+[package]
+name = "solana_gossip_tui"
+version = "0.1.0"
+edition = "2021"
+authors = ["Luca Ceppelli <ceppelli@gmail.com>"]
+description = """
+An attempt to reverse engineer the Solana Gossip protocol
+"""
+keywords = [ "solana", "gossip", "blockchain", "tui"]
+repository = "https://github.com/ceppelli/solana-gossip-tui"
+readme = "README.md"
+license = "MIT"
+
+default-run = "solana_gossip_tui"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+# https://crates.io/crates/crossterm
+crossterm = { version = "0.25", features = ["event-stream"], optional = false }
+# https://crates.io/crates/tui
+tui = { version = "0.19.0", features = ["crossterm"], default-features = false }
+
+solana-sdk = "1.15.1"
+solana-bloom = "1.15.1"
+serde = "1.0.144"
+serde_derive = "1.0.103"
+bv = { version = "0.11.1", features = ["serde"] }
+bincode = "1.3.3"
+
+[dev-dependencies]
+
+[[bin]]
+name = "solana_gossip_tui"
+path = "src/main.rs"
+
+[[bin]]
+name = "solana_gossip_cli"
+path = "src/bin/main_cli.rs"
+
