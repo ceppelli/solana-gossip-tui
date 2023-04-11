@@ -9,7 +9,7 @@ use crate::{
 pub struct AppModel {
   pub debug_messages_stateful: StatefulList<String>,
   pub home_stateful_table: StatefulTable<String>,
-  pub home_stats_stateful: StatefulList<String>,
+  pub home_stats_stateful_list: StatefulList<String>,
 
   pub entrypoints_stateful: StatefulList<String>,
   pub entrypoints: Vec<String>,
@@ -33,7 +33,11 @@ impl Default for AppModel {
     AppModel {
       debug_messages_stateful: StatefulList::default(),
       home_stateful_table: StatefulTable::default(),
-      home_stats_stateful: StatefulList::default(),
+      home_stats_stateful_list: StatefulList::with_items(vec![
+        "[Receiver] processed msgs #:0".to_string(),
+        "[Sender] processed msgs #:0".to_string(),
+        "[Logic] processed msgs #:0".to_string()
+      ]),
       entrypoints_stateful: StatefulList::default(),
       entrypoints,
       entrypoint: None,

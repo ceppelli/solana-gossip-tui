@@ -2,11 +2,12 @@ use std::{
   io,
   net::{IpAddr, Ipv4Addr, SocketAddr, ToSocketAddrs, UdpSocket},
   sync::{mpsc, Arc},
-  thread::JoinHandle, time::Duration,
+  thread::JoinHandle,
+  time::Duration,
 };
 
 use crate::logic::spawn_logic;
-use crate::transport::{receiver::spawn_receiver, sender::spawn_sender, CtrlCmd, Payload};
+use crate::transport::{receiver::spawn_receiver, sender::spawn_sender, CtrlCmd, Payload, Stats};
 use crate::{
   app::AppContext,
   protocol::{LegacyContactInfo, Version},
@@ -19,9 +20,10 @@ pub enum Data {
   Version(Version),
 }
 
+#[allow(clippy::type_complexity)]
 pub fn init_threads(
   ctx: &mut AppContext,
-) -> io::Result<(mpsc::Receiver<Data>, Vec<JoinHandle<()>>)> {
+) -> io::Result<(mpsc::Receiver<Data>, mpsc::Receiver<Stats>, Vec<JoinHandle<()>>)> {
   let entrypoint_addr = parse_addr(&ctx.model.entrypoints[1]);
 
   if entrypoint_addr.is_none() {
@@ -44,33 +46,40 @@ pub fn init_threads(
     println!("[main] gossip_addr:{:?}", gossip_local_listener_addr);
   }
 
+  // receiver
   let (ctrl_sender_tx, ctrl_sender_rx) = mpsc::channel::<CtrlCmd>();
   ctx.ctrl_txs.push(ctrl_sender_tx);
   let (sender_tx, sender_rx) = mpsc::channel::<Payload>();
 
+  // sender
   let (ctrl_receiver_tx, ctrl_receiver_rx) = mpsc::channel::<CtrlCmd>();
   ctx.ctrl_txs.push(ctrl_receiver_tx);
   let (receiver_tx, receiver_rx) = mpsc::channel::<Payload>();
 
+  // logic
   let (ctrl_logic_tx, ctrl_logic_rx) = mpsc::channel::<CtrlCmd>();
   ctx.ctrl_txs.push(ctrl_logic_tx);
+
+  // stats
+  let (stats_tx, stats_rx) = mpsc::channel::<Stats>();
 
   let (data_tx, data_rx) = mpsc::channel::<Data>();
 
   let trace = ctx.trace;
-  let receiver_t = spawn_receiver(socket.clone(), receiver_tx, ctrl_receiver_rx, trace)?;
-  let sender_t = spawn_sender(socket, sender_rx, ctrl_sender_rx, trace)?;
+  let receiver_t = spawn_receiver(socket.clone(), receiver_tx, ctrl_receiver_rx, stats_tx.clone(), trace)?;
+  let sender_t = spawn_sender(socket, sender_rx, ctrl_sender_rx, stats_tx.clone(), trace)?;
   let logic_t = spawn_logic(
     gossip_local_listener_addr,
     entrypoint_addr,
     sender_tx,
     receiver_rx,
     ctrl_logic_rx,
+    stats_tx,
     data_tx,
     trace,
   )?;
 
-  Ok((data_rx, vec![receiver_t, sender_t, logic_t]))
+  Ok((data_rx, stats_rx, vec![receiver_t, sender_t, logic_t]))
 }
 
 pub fn parse_addr(addr: &str) -> Option<SocketAddr> {
@@ -123,10 +132,6 @@ mod tests {
 
   #[test]
   fn test_parse_addr_invalid() {
-    assert_eq!(
-      parse_addr("host,8000"),
-      None
-    );
+    assert_eq!(parse_addr("host,8000"), None);
   }
-
 }

@@ -8,8 +8,12 @@ mod transport;
 mod ui;
 mod utils;
 
-use std::net::SocketAddr;
-use std::{io, sync::mpsc::Receiver, time::Duration};
+use std::{
+  io,
+  net::SocketAddr,
+  sync::mpsc::Receiver,
+  time::{Duration, Instant},
+};
 
 use crossterm::event::{self, Event, KeyCode};
 
@@ -20,7 +24,7 @@ use crate::common::{init_threads, Data};
 use crate::logic::RECV_TIMEOUT;
 use crate::protocol::LegacyVersion2;
 use crate::stm::{events, stm_main::MainStm, States};
-use crate::transport::CtrlCmd;
+use crate::transport::{CtrlCmd, Stats};
 
 const APP_ID: &str = "solana_gossip_tui";
 const APP_VERSION: &str = "0.0.1+";
@@ -56,6 +60,10 @@ fn run_app<B: Backend>(
   stm.switch_state(States::EntrypointSelection, ctx);
 
   let mut data_rx: Option<Receiver<Data>> = None;
+  let mut stats_rx: Option<Receiver<Stats>> = None;
+
+  let mut before = Instant::now();
+  const STATS_INTERVAL: Duration = Duration::from_millis(1000);
 
   loop {
     terminal.draw(|f| stm.draw(f, ctx))?;
@@ -78,8 +86,9 @@ fn run_app<B: Backend>(
           && data_rx.is_none()
         {
           let res = init_threads(ctx);
-          if let Ok((rx, _t_hdls)) = res {
+          if let Ok((rx, _stats_rx, _t_hdls)) = res {
             data_rx = Some(rx);
+            stats_rx = Some(_stats_rx);
           }
         } else if KeyCode::Char('d') == key.code
           && stm.current_st == States::Home
@@ -90,6 +99,7 @@ fn run_app<B: Backend>(
           }
 
           data_rx = None;
+          stats_rx = None;
         }
       }
     }
@@ -160,6 +170,31 @@ fn run_app<B: Backend>(
             }
           },
         }
+      }
+    }
+
+    if let Some(ref stats_rx) = stats_rx {
+      if let Ok(stats) = stats_rx.recv_timeout(RECV_TIMEOUT) {
+        fn format_stats(ctx: &mut AppContext, index: usize, stats: &Stats) {
+          let _ = std::mem::replace(
+            &mut ctx.model.home_stats_stateful_list.items[index],
+            format!("[{:?}] processed msgs #: {}", stats.id, stats.counter),
+          );
+        }
+        match stats.id {
+          transport::StatsId::Receiver => format_stats(ctx, 0, &stats),
+          transport::StatsId::Sender => format_stats(ctx, 1, &stats),
+          transport::StatsId::Logic => format_stats(ctx, 2, &stats),
+        }
+      }
+    }
+
+    let now = Instant::now();
+    if (now - before) > STATS_INTERVAL {
+      before = now;
+
+      for ctrl_tx in &ctx.ctrl_txs {
+        ctrl_tx.send(CtrlCmd::Counter).unwrap_or(());
       }
     }
   }

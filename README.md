@@ -125,7 +125,7 @@ Select an entrypoint using the `Up/Down` arrow keys and press `Enter` and the **
 
 ![Home View](assets/solana-gossip-tui-4.png)
 
-## ⚠️ At that momennt only the Solana Devnet is answering. We recommend using either the first entrypoint or the IP addresses listed below which are always nodes of the Devnet but less congested. ⚠️
+## ⚠️ At that moment only the Solana Devnet is answering. We recommend using either the first entrypoint or the IP addresses listed below which are always nodes of the Devnet but less congested. ⚠️
 
 
 Now press the `c` key and the client will open a local socket on port **8000** and connect to the selected entrypoint.

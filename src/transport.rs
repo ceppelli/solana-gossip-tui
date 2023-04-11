@@ -3,6 +3,7 @@ pub(crate) mod sender;
 
 use std::{io, net::SocketAddr, slice::SliceIndex, time::Duration};
 
+use bincode::{Options, Result as BincodeResult};
 use serde::Serialize;
 
 #[derive(Debug)]
@@ -12,7 +13,17 @@ pub enum CtrlCmd {
   Counter,
 }
 
-use bincode::{Result as BincodeResult, Options};
+#[derive(Debug)]
+pub enum StatsId {
+  Receiver,
+  Sender,
+  Logic,
+}
+
+pub struct Stats {
+  pub id: StatsId,
+  pub counter: u32,
+}
 
 /// Maximum over-the-wire size of a Transaction
 ///   1280 is IPv6 minimum MTU
