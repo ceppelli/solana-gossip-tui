@@ -92,3 +92,72 @@ impl State for EntrypointSelectionState {
     "##
   }
 }
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+  use crossterm::event::KeyCode;
+  use tui::{backend::TestBackend, buffer::Buffer, Terminal};
+
+  #[test]
+  fn test_home_state() -> Result<(), String> {
+    let mut ctx = AppContext::new_for_testing();
+
+    let mut state = EntrypointSelectionState::default();
+
+    let event = Event::Key { key_code: KeyCode::Esc };
+    let to_state = state.on_event(event, &mut ctx);
+    assert_eq!(to_state, None);
+
+    let event = Event::Key { key_code: KeyCode::Down };
+    let to_state = state.on_event(event, &mut ctx);
+    assert_eq!(to_state, None);
+
+    let event = Event::Key { key_code: KeyCode::Up };
+    let to_state = state.on_event(event, &mut ctx);
+    assert_eq!(to_state, None);
+
+    let event = Event::Key { key_code: KeyCode::Left };
+    let to_state = state.on_event(event, &mut ctx);
+    assert_eq!(to_state, None);
+
+    let event = Event::Key { key_code: KeyCode::Enter };
+    let to_state = state.on_event(event, &mut ctx);
+    assert_eq!(to_state, None);
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_ui() {
+    let backend = TestBackend::new(7, 4);
+    let mut terminal = Terminal::new(backend).unwrap();
+    let mut ctx = AppContext::new_for_testing();
+
+    let state = EntrypointSelectionState::default();
+
+    terminal
+      .draw(|f| {
+        state.ui(f, &mut ctx);
+      })
+      .unwrap();
+
+    #[rustfmt::skip]
+    let expected = Buffer::with_lines(vec![
+      "┌ ho┐─╮",
+      "└───┘ │",
+      "│     │",
+      "╰─────╯"
+      ]);
+
+    terminal.backend().assert_buffer(&expected);
+  }
+
+  #[test]
+  fn test_state_help() -> Result<(), String> {
+    let state = EntrypointSelectionState::default();
+    assert_eq!(state.help_text().len(), 178);
+
+    Ok(())
+  }
+}

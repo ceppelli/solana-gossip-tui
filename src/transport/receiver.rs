@@ -1,4 +1,3 @@
-use crate::transport::{CtrlCmd, Payload, PACKET_DATA_SIZE};
 use std::{
   io,
   net::UdpSocket,
@@ -7,26 +6,31 @@ use std::{
   thread::{Builder, JoinHandle},
 };
 
+use crate::transport::{CtrlCmd, Payload, Stats, StatsId, PACKET_DATA_SIZE};
+
 pub(crate) fn spawn_receiver(
   socket: Arc<UdpSocket>,
   tx: Sender<Payload>,
   ctrl_rx: Receiver<CtrlCmd>,
+  stats_tx: Sender<Stats>,
   trace: bool,
 ) -> io::Result<JoinHandle<()>> {
   Builder::new()
     .name("udp_receiver_t".to_string())
     .spawn(move || {
-      let mut index: u32 = 0;
+      let mut counter: u32 = 0;
 
       'main_l: loop {
-        index += 1;
-
         if let Ok(ctrl_msg) = ctrl_rx.try_recv() {
           match ctrl_msg {
             CtrlCmd::Stop => break 'main_l,
             CtrlCmd::Counter => {
+              stats_tx
+                .send(Stats { id: StatsId::Receiver, counter })
+                .unwrap_or(());
+
               if trace {
-                println!("[udp_receiver_t] message processed:{}", index);
+                println!("[udp_receiver_t] message processed:{}", counter);
               }
             },
           }
@@ -73,17 +77,19 @@ pub(crate) fn spawn_receiver(
               tx.send(Payload { len, buf, addr: Some(addr) })
                 .unwrap_or(());
             }
+
+            counter += 1;
           },
           Err(e) => {
             if trace {
-              println!("[udp_receiver_t] index:{index} recv function failed: {e:?}");
+              println!("[udp_receiver_t] index:{counter} recv function failed: {e:?}");
             }
           },
         }
       }
 
       if trace {
-        println!("[udp_receiver_t] index:{index} terminated");
+        println!("[udp_receiver_t] index:{counter} terminated");
       }
     })
 }

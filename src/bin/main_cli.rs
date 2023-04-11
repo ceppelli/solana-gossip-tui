@@ -12,7 +12,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
   let _status = init_threads(&mut ctx);
 
-  if let Ok((_data_rx, t_hdls)) = _status {
+  if let Ok((_data_rx, _stats_rx, t_hdls)) = _status {
     for t_hdl in t_hdls {
       t_hdl.join().unwrap();
     }

@@ -82,17 +82,18 @@ pub fn draw_stateful_table<B: Backend>(
   f: &mut Frame<B>,
   bbox: Rect,
   title: &str,
-  headers: Vec<&str>,
+  headers: &[&str],
+  widths: &[Constraint],
   stateful_table: &mut StatefulTable<String>,
 ) {
   let selected_style = Style::default().add_modifier(Modifier::REVERSED);
-  let normal_style = Style::default().bg(Color::LightBlue);
+  let header_style = Style::default().bg(Color::LightBlue);
   let header_cells = headers
     .iter()
     .map(|h| Cell::from(*h).style(Style::default().fg(Color::White)));
 
   let header = Row::new(header_cells)
-    .style(normal_style)
+    .style(header_style)
     .height(1)
     .bottom_margin(1);
 
@@ -105,158 +106,166 @@ pub fn draw_stateful_table<B: Backend>(
     .header(header)
     .block(Block::default().borders(Borders::ALL).title(title))
     .highlight_style(selected_style)
-    .widths(&[
-      Constraint::Percentage(14),
-      Constraint::Percentage(6),
-      Constraint::Percentage(16),
-      Constraint::Percentage(6),
-      Constraint::Percentage(6),
-      Constraint::Percentage(6),
-      Constraint::Percentage(6),
-      Constraint::Percentage(6),
-      Constraint::Percentage(6),
-      Constraint::Percentage(6),
-      Constraint::Percentage(6),
-      Constraint::Percentage(6),
-      Constraint::Percentage(6),
-    ]);
+    .widths(widths);
   f.render_stateful_widget(t, bbox, &mut stateful_table.state);
 }
 
 // tests
 #[cfg(test)]
 mod tests {
-  // use super::*;
-  // use tui::{backend::TestBackend, buffer::Buffer, Terminal};
+  use std::vec;
 
-  // #[test]
-  // fn test_stateful_list() {
-  //   let mut stateful_list = StatefulTable::new();
-  //   stateful_list.push("Hello");
-  //   stateful_list.push("World");
+  use super::*;
+  use tui::{backend::TestBackend, buffer::Buffer, Terminal};
 
-  //   assert_eq!(stateful_list.items.len(), 2);
-  //   assert_eq!(stateful_list.state.selected(), None);
+  #[test]
+  fn test_stateful_table() {
+    let mut stateful_table = StatefulTable::default();
+    stateful_table.push_row(vec!["Hello"]);
+    stateful_table.push_row(vec!["World"]);
 
-  //   stateful_list.next();
-  //   assert_eq!(stateful_list.state.selected(), Some(0));
+    assert_eq!(stateful_table.items.len(), 2);
+    assert_eq!(stateful_table.state.selected(), None);
 
-  //   stateful_list.next();
-  //   assert_eq!(stateful_list.state.selected(), Some(1));
+    stateful_table.next_row();
+    assert_eq!(stateful_table.state.selected(), Some(0));
 
-  //   stateful_list.next();
-  //   assert_eq!(stateful_list.state.selected(), Some(0));
+    stateful_table.next_row();
+    assert_eq!(stateful_table.state.selected(), Some(1));
 
-  //   stateful_list.next();
-  //   assert_eq!(stateful_list.state.selected(), Some(1));
+    stateful_table.next_row();
+    assert_eq!(stateful_table.state.selected(), Some(0));
 
-  //   stateful_list.previous();
-  //   assert_eq!(stateful_list.state.selected(), Some(0));
+    stateful_table.next_row();
+    assert_eq!(stateful_table.state.selected(), Some(1));
 
-  //   stateful_list.previous();
-  //   assert_eq!(stateful_list.state.selected(), Some(1));
+    stateful_table.previous_row();
+    assert_eq!(stateful_table.state.selected(), Some(0));
 
-  //   stateful_list.previous();
-  //   assert_eq!(stateful_list.state.selected(), Some(0));
+    stateful_table.previous_row();
+    assert_eq!(stateful_table.state.selected(), Some(1));
 
-  //   stateful_list.unselect();
-  //   assert_eq!(stateful_list.state.selected(), None);
-  // }
+    stateful_table.previous_row();
+    assert_eq!(stateful_table.state.selected(), Some(0));
 
-  // #[test]
-  // fn test_stateful_list_reverse() {
-  //   let mut stateful_list = StatefulTable::new();
-  //   stateful_list.push("Hello");
-  //   stateful_list.push("World");
+    stateful_table.unselect();
+    assert_eq!(stateful_table.state.selected(), None);
+  }
 
-  //   assert_eq!(stateful_list.items.len(), 2);
-  //   assert_eq!(stateful_list.state.selected(), None);
+  #[test]
+  fn test_stateful_table_reverse() {
+    let mut stateful_table = StatefulTable::default();
+    stateful_table.push_row(vec!["Hello"]);
+    stateful_table.push_row(vec!["World"]);
 
-  //   stateful_list.previous();
-  //   assert_eq!(stateful_list.state.selected(), Some(0));
+    assert_eq!(stateful_table.items.len(), 2);
+    assert_eq!(stateful_table.state.selected(), None);
 
-  //   stateful_list.previous();
-  //   assert_eq!(stateful_list.state.selected(), Some(1));
+    stateful_table.previous_row();
+    assert_eq!(stateful_table.state.selected(), Some(0));
 
-  //   stateful_list.previous();
-  //   assert_eq!(stateful_list.state.selected(), Some(0));
+    stateful_table.previous_row();
+    assert_eq!(stateful_table.state.selected(), Some(1));
 
-  //   stateful_list.unselect();
-  //   assert_eq!(stateful_list.state.selected(), None);
-  // }
+    stateful_table.previous_row();
+    assert_eq!(stateful_table.state.selected(), Some(0));
 
-  // #[test]
-  // fn test_stateful_list_debug() {
-  //   let mut stateful_list = StatefulTable::new();
-  //   stateful_list.push("Hello");
-  //   stateful_list.push("World");
+    stateful_table.unselect();
+    assert_eq!(stateful_table.state.selected(), None);
+  }
 
-  //   assert_eq!(format!("{stateful_list:?}"), "StatefulList { state: ListState { offset: 0, selected: None }, items: [\"Hello\", \"World\"] }");
-  // }
+  #[test]
+  fn test_stateful_table_debug() {
+    let mut stateful_table = StatefulTable::default();
+    stateful_table.push_row(vec!["Hello"]);
+    stateful_table.push_row(vec!["World"]);
 
-  // #[test]
-  // fn test_stateful_list_with_items() {
-  //   let mut stateful_list = StatefulTable::with_items(vec!["Hello", "World"]);
+    assert_eq!(format!("{stateful_table:?}"), "StatefulTable { state: TableState { offset: 0, selected: None }, items: [[\"Hello\"], [\"World\"]] }");
+  }
 
-  //   assert_eq!(stateful_list.items.len(), 2);
-  //   assert_eq!(stateful_list.state.selected(), None);
+  #[test]
+  fn test_stateful_table_with_items() {
+    let mut stateful_table = StatefulTable::with_items(vec![vec!["Hello"], vec!["World"]]);
 
-  //   stateful_list.next();
-  //   assert_eq!(stateful_list.state.selected(), Some(0));
+    assert_eq!(stateful_table.items.len(), 2);
+    assert_eq!(stateful_table.state.selected(), None);
 
-  //   stateful_list.next();
-  //   assert_eq!(stateful_list.state.selected(), Some(1));
+    stateful_table.next_row();
+    assert_eq!(stateful_table.state.selected(), Some(0));
 
-  //   stateful_list.previous();
-  //   assert_eq!(stateful_list.state.selected(), Some(0));
+    stateful_table.next_row();
+    assert_eq!(stateful_table.state.selected(), Some(1));
 
-  //   stateful_list.previous();
-  //   assert_eq!(stateful_list.state.selected(), Some(1));
+    stateful_table.previous_row();
+    assert_eq!(stateful_table.state.selected(), Some(0));
 
-  //   stateful_list.unselect();
-  //   assert_eq!(stateful_list.state.selected(), None);
-  // }
+    stateful_table.previous_row();
+    assert_eq!(stateful_table.state.selected(), Some(1));
 
-  // #[test]
-  // fn test_stateful_list_with_title() {
-  //   let backend = TestBackend::new(7, 4);
-  //   let mut terminal = Terminal::new(backend).unwrap();
+    stateful_table.unselect();
+    assert_eq!(stateful_table.state.selected(), None);
+  }
 
-  //   let mut stateful_list =
-  //     StatefulTable::with_items(vec![String::from("Hello"), String::from("World")]);
+  #[test]
+  fn test_stateful_table_with_title() {
+    let backend = TestBackend::new(22, 6);
+    let mut terminal = Terminal::new(backend).unwrap();
 
-  //   terminal
-  //     .draw(|f| {
-  //       let size = f.size();
+    let mut stateful_table = StatefulTable::with_items(vec![
+      vec![String::from("Hello"), String::from("World")],
+      vec![String::from("World"), String::from("Hello")],
+    ]);
 
-  //       draw_stateful_table(f, size, " x ", &mut stateful_list, false);
-  //     })
-  //     .unwrap();
+    terminal
+      .draw(|f| {
+        let size = f.size();
 
-  //   #[rustfmt::skip]
-  //   let expected = Buffer::with_lines(vec![
-  //     "┌ x ──┐",
-  //     "│Hello│",
-  //     "│World│",
-  //     "└─────┘"
-  //     ]);
-  //   terminal.backend().assert_buffer(&expected);
+        let withs = [Constraint::Percentage(50), Constraint::Percentage(50)];
 
-  //   terminal
-  //     .draw(|f| {
-  //       let size = f.size();
+        draw_stateful_table(
+          f,
+          size,
+          " title ",
+          &["Header1", "Header2"],
+          &withs,
+          &mut stateful_table,
+        );
+      })
+      .unwrap();
 
-  //       draw_stateful_table(f, size, " x ", &mut stateful_list, true);
-  //     })
-  //     .unwrap();
-
-  //   #[rustfmt::skip]
-  //   let expected = Buffer::with_lines(vec![
-  //     "┌ x ──┐",
-  //     "│World│",
-  //     "│Hello│",
-  //     "└─────┘"
-  //     ]);
-  //   terminal.backend().assert_buffer(&expected);
-  // }
+    #[rustfmt::skip]
+    let mut expected = Buffer::with_lines(vec![
+      "┌ title ─────────────┐",
+      "│Header1    Header2  │",
+      "│                    │",
+      "│Hello      World    │",
+      "│World      Hello    │",
+      "└────────────────────┘"
+      ]);
+    expected.set_string(
+      1,
+      1,
+      "Header1    Header2  ",
+      Style::default().fg(Color::White).bg(Color::LightBlue),
+    );
+    expected.set_string(
+      11,
+      1,
+      " ",
+      Style::default().fg(Color::Reset).bg(Color::LightBlue),
+    );
+    expected.set_string(
+      1,
+      2,
+      "                    ",
+      Style::default().fg(Color::White).bg(Color::Reset),
+    );
+    expected.set_string(
+      11,
+      2,
+      " ",
+      Style::default().fg(Color::Reset).bg(Color::Reset),
+    );
+    terminal.backend().assert_buffer(&expected);
+  }
 }

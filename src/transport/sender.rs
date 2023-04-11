@@ -1,33 +1,38 @@
-use crate::transport::{CtrlCmd, Payload};
 use std::{
   io,
   net::UdpSocket,
-  sync::{mpsc::Receiver, Arc},
+  sync::{
+    mpsc::{Receiver, Sender},
+    Arc,
+  },
   thread::{Builder, JoinHandle},
 };
 
-use super::RECV_TIMEOUT;
+use crate::transport::{CtrlCmd, Payload, Stats, StatsId, RECV_TIMEOUT};
 
 pub(crate) fn spawn_sender(
   socket: Arc<UdpSocket>,
   rx: Receiver<Payload>,
   ctrl_rx: Receiver<CtrlCmd>,
+  stats_tx: Sender<Stats>,
   trace: bool,
 ) -> io::Result<JoinHandle<()>> {
   Builder::new()
     .name("udp_sender_t".to_string())
     .spawn(move || {
-      let mut index: u32 = 0;
+      let mut counter: u32 = 0;
 
       'main_l: loop {
-        index += 1;
-
         if let Ok(ctrl_msg) = ctrl_rx.try_recv() {
           match ctrl_msg {
             CtrlCmd::Stop => break 'main_l,
             CtrlCmd::Counter => {
+              stats_tx
+                .send(Stats { id: StatsId::Sender, counter })
+                .unwrap_or(());
+
               if trace {
-                println!("[udp_sender_t] message processed:{}", index);
+                println!("[udp_sender_t] message processed:{}", counter);
               }
             },
           }
@@ -42,16 +47,18 @@ pub(crate) fn spawn_sender(
 
               if let Err(e) = socket.send_to(buf, addr) {
                 if trace {
-                  println!("[udp_sender_t] index:{} sending Err:{:?}", index, e);
+                  println!("[udp_sender_t] index:{} sending Err:{:?}", counter, e);
                 }
               }
+
+              counter += 1;
             }
           }
         }
       }
 
       if trace {
-        println!("[udp_sender_t]  index:{index} terminated");
+        println!("[udp_sender_t]  index:{counter} terminated");
       }
     })
 }

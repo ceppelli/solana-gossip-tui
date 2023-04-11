@@ -12,7 +12,7 @@ use std::{
 use crate::{
   common::Data,
   protocol::{CrdsData, CrdsFilter, CrdsValue, LegacyContactInfo, Pong, Protocol},
-  transport::{CtrlCmd, Payload},
+  transport::{CtrlCmd, Payload, Stats, StatsId},
   utils::since_the_epoch_millis,
 };
 
@@ -20,18 +20,20 @@ use solana_sdk::{signature::Keypair, signer::Signer};
 
 pub const RECV_TIMEOUT: Duration = Duration::from_millis(30);
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn spawn_logic(
   gossip_local_listener_addr: SocketAddr,
   entrypoint_addr: SocketAddr,
   tx: Sender<Payload>,
   rx: Receiver<Payload>,
   ctrl_rx: Receiver<CtrlCmd>,
+  stats_tx: Sender<Stats>,
   data_tx: Sender<Data>,
   trace: bool,
 ) -> io::Result<JoinHandle<()>> {
   #[allow(clippy::let_and_return)]
   Builder::new().name("logic_t".to_string()).spawn(move || {
-    let mut index: u32 = 0;
+    let mut counter: u32 = 0;
 
     let keypair = Keypair::new();
     let keypair_arc = Arc::new(keypair);
@@ -46,14 +48,16 @@ pub(crate) fn spawn_logic(
     };
 
     'main_l: loop {
-      index += 1;
-
       match ctrl_rx.try_recv() {
         Ok(ctrl_msg) => match ctrl_msg {
           CtrlCmd::Stop => break 'main_l,
           CtrlCmd::Counter => {
+            stats_tx
+              .send(Stats { id: StatsId::Logic, counter })
+              .unwrap_or(());
+
             if trace {
-              println!("[logic_t] index:{index} received CtrlCmd::Counter");
+              println!("[logic_t] index:{counter} received CtrlCmd::Counter");
             }
           },
         },
@@ -65,7 +69,7 @@ pub(crate) fn spawn_logic(
           let len = payload.len;
           if trace {
             println!(
-              "######## [logic_t] i:{index} #### addr:{:?} #### len:{len} ################ 1",
+              "######## [logic_t] i:{counter} #### addr:{:?} #### len:{len} ################ 1",
               from_addr
             );
           }
@@ -89,7 +93,7 @@ pub(crate) fn spawn_logic(
                     },
                     Err(err) => {
                       if trace {
-                        println!("[logic_t] index:{index} err:{:?}", err);
+                        println!("[logic_t] index:{counter} err:{:?}", err);
                       }
                     },
                   }
@@ -143,6 +147,8 @@ pub(crate) fn spawn_logic(
           if trace {
             println!("#----- [logic_t] ---------------------------------- 2");
           }
+
+          counter += 1;
         }
       }
 
@@ -152,9 +158,9 @@ pub(crate) fn spawn_logic(
 
       let protocol = Protocol::PullRequest(crds_filter, crds_value);
 
-      if trace && index % 50 == 0 {
+      if trace && counter % 50 == 0 {
         println!("#===== [logic_t] ==================================");
-        println!("# index:{index} LegacyContactInfo has been sended");
+        println!("# index:{counter} LegacyContactInfo has been sended");
         println!("#----- [logic_t] ----------------------------------");
       }
 
@@ -168,14 +174,14 @@ pub(crate) fn spawn_logic(
         },
         Err(err) => {
           if trace {
-            println!("[logic_t] index:{index} err:{:?}", err);
+            println!("[logic_t] index:{counter} err:{:?}", err);
           }
         },
       }
     }
 
     if trace {
-      println!("[logic_t] index:{index} terminated");
+      println!("[logic_t] index:{counter} terminated");
     }
   })
 }
@@ -185,21 +191,15 @@ fn crds_data_print(value: &CrdsValue) -> String {
     CrdsData::LegacyContactInfo(info) => {
       format!("LegacyContactInfo info:{:?}", info)
     },
-    CrdsData::Vote(_, _) => {
-      "Vote".to_string()
-    },
-    CrdsData::LowestSlot(_, _) => {
-      "LowestSlot".to_string()
-    },
+    CrdsData::Vote(_, _) => "Vote".to_string(),
+    CrdsData::LowestSlot(_, _) => "LowestSlot".to_string(),
     CrdsData::SnapshotHashes(snapshot) => {
       format!("SnapshotHashes snapshot:{:?}", snapshot)
     },
     CrdsData::AccountsHashes(snapshot) => {
       format!("AccountsHashes snapshot:{:?}", snapshot)
     },
-    CrdsData::EpochSlots(_, _) => {
-      "EpochSlots".to_string()
-    },
+    CrdsData::EpochSlots(_, _) => "EpochSlots".to_string(),
     CrdsData::LegacyVersion(version) => {
       format!("LegacyVersion version:{:?}", version)
     },
@@ -209,14 +209,8 @@ fn crds_data_print(value: &CrdsValue) -> String {
     CrdsData::NodeInstance(node_instance) => {
       format!("NodeInstance nodeInstance:{:?}", node_instance)
     },
-    CrdsData::DuplicateShred() => {
-      "DuplicateShred".to_string()
-    },
-    CrdsData::IncrementalSnapshotHashes(_) => {
-      "IncrementalSnapshotHashes".to_string()
-    },
-    CrdsData::ContactInfo() => {
-      "ContactInfo".to_string()
-    },
+    CrdsData::DuplicateShred() => "DuplicateShred".to_string(),
+    CrdsData::IncrementalSnapshotHashes(_) => "IncrementalSnapshotHashes".to_string(),
+    CrdsData::ContactInfo() => "ContactInfo".to_string(),
   }
 }
