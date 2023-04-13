@@ -1,6 +1,6 @@
 use super::state_entrypoint_selection::EntrypointSelectionState;
 use super::{State, States};
-use crate::app::AppContext;
+use crate::app::Context;
 use crate::stm::events::Event;
 use crate::stm::state_debug::DebugState;
 use crate::stm::state_help::HelpState;
@@ -45,36 +45,33 @@ impl MainStm<'_> {
     }
   }
 
-  pub fn switch_state(&mut self, to_state: States, ctx: &mut AppContext) {
-    match to_state {
-      States::PreviousOne => {
-        if let Some(prev_state) = self.previous_st {
-          self.current_st = prev_state;
-          self.previous_st = None;
-        }
-      },
-      _ => {
-        self.previous_st = Some(self.current_st);
-        self.current_st = to_state;
+  pub fn switch_state(&mut self, to_state: States, ctx: &mut Context) {
+    if to_state == States::PreviousOne {
+      if let Some(prev_state) = self.previous_st {
+        self.current_st = prev_state;
+        self.previous_st = None;
+      }
+    } else {
+      self.previous_st = Some(self.current_st);
+      self.current_st = to_state;
 
-        match self.current_st {
-          States::EntrypointSelection => {
-            if self.entrypoints_st.on_enter_first {
-              self.entrypoints_st.on_enter_once(ctx);
-            }
-          },
-          States::Home => {
-            if self.home_st.on_enter_first {
-              self.home_st.on_enter_once(ctx);
-            }
-          },
-          _ => {},
-        }
-      },
+      match self.current_st {
+        States::EntrypointSelection => {
+          if self.entrypoints_st.on_enter_first {
+            self.entrypoints_st.on_enter_once(ctx);
+          }
+        },
+        States::Home => {
+          if self.home_st.on_enter_first {
+            self.home_st.on_enter_once(ctx);
+          }
+        },
+        _ => {},
+      }
     }
   }
 
-  pub fn on_event(&mut self, event: Event, ctx: &mut AppContext) {
+  pub fn on_event(&mut self, event: Event, ctx: &mut Context) {
     if self.current_st != States::Debug {
       ctx.debug(format!(
         "[STM] on_event {:?} state current:{:?} prev:{:?}",
@@ -83,14 +80,14 @@ impl MainStm<'_> {
     }
 
     match (self.current_st, event.clone()) {
-      (States::Unknown, Event::Key { key_code: KeyCode::Char('D') })
-      | (States::EntrypointSelection, Event::Key { key_code: KeyCode::Char('D') })
-      | (States::Home, Event::Key { key_code: KeyCode::Char('D') }) => {
-        self.switch_state(States::Debug, ctx)
+      (
+        States::Unknown | States::EntrypointSelection | States::Home,
+        Event::Key { key_code: KeyCode::Char('D') },
+      ) => {
+        self.switch_state(States::Debug, ctx);
       },
-      (States::EntrypointSelection, Event::Key { key_code: KeyCode::Char('?') })
-      | (States::Home, Event::Key { key_code: KeyCode::Char('?') }) => {
-        self.switch_state(States::Help, ctx)
+      (States::EntrypointSelection | States::Home, Event::Key { key_code: KeyCode::Char('?') }) => {
+        self.switch_state(States::Help, ctx);
       },
       (States::Unknown, _) => {
         if let Some(to_state) = self.unknow_st.on_event(event, ctx) {
@@ -117,11 +114,11 @@ impl MainStm<'_> {
           self.switch_state(to_state, ctx);
         }
       },
-      _ => ctx.debug(format!("[STM] on_event {:?} not match", event)),
+      _ => ctx.debug(format!("[STM] on_event {event:?} not match")),
     }
   }
 
-  pub fn draw<B: Backend>(&self, f: &mut Frame<B>, ctx: &mut AppContext) {
+  pub fn draw<B: Backend>(&self, f: &mut Frame<B>, ctx: &mut Context) {
     // it Help is the current state, overlay to the previous state ui the help view.
     if self.current_st == States::Help {
       let text = match self.previous_st {
@@ -178,8 +175,7 @@ mod tests {
 
   #[test]
   fn test_stm() -> Result<(), String> {
-
-    let mut ctx = AppContext::new_for_testing();
+    let mut ctx = Context::new_for_testing();
 
     let mut stm = MainStm::new("my_stm", false);
     assert_eq!(stm.name, "my_stm");
@@ -209,7 +205,6 @@ mod tests {
     let e = Event::Key { key_code: KeyCode::Esc };
     stm.on_event(e, &mut ctx);
     assert!(matches!(stm.current_st, States::Home));
-
 
     Ok(())
   }

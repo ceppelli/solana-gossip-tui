@@ -1,4 +1,8 @@
-use std::{collections::BTreeSet, net::SocketAddr};
+use std::{
+  collections::BTreeSet,
+  fmt,
+  net::{Ipv4Addr, SocketAddr},
+};
 
 use bincode::{serialize, Error as BincodeError};
 use bv::BitVec;
@@ -42,27 +46,24 @@ pub struct LegacyContactInfo {
   pub shred_version: u16,
 }
 
-#[macro_export]
-macro_rules! socketaddr_default {
-  () => {
-    std::net::SocketAddr::from((std::net::Ipv4Addr::from(0), 0))
-  };
+fn socketaddr_default() -> SocketAddr {
+  SocketAddr::from((Ipv4Addr::from(0), 0))
 }
 
 impl Default for LegacyContactInfo {
   fn default() -> Self {
     LegacyContactInfo {
       id: Pubkey::default(),
-      gossip: socketaddr_default!(),
-      tvu: socketaddr_default!(),
-      tvu_forwards: socketaddr_default!(),
-      repair: socketaddr_default!(),
-      tpu: socketaddr_default!(),
-      tpu_forwards: socketaddr_default!(),
-      tpu_vote: socketaddr_default!(),
-      rpc: socketaddr_default!(),
-      rpc_pubsub: socketaddr_default!(),
-      serve_repair: socketaddr_default!(),
+      gossip: socketaddr_default(),
+      tvu: socketaddr_default(),
+      tvu_forwards: socketaddr_default(),
+      repair: socketaddr_default(),
+      tpu: socketaddr_default(),
+      tpu_forwards: socketaddr_default(),
+      tpu_vote: socketaddr_default(),
+      rpc: socketaddr_default(),
+      rpc_pubsub: socketaddr_default(),
+      serve_repair: socketaddr_default(),
       wallclock: 0,
       shred_version: 0,
     }
@@ -188,23 +189,22 @@ pub struct IncrementalSnapshotHashes {
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Debug)]
-#[allow(clippy::large_enum_variant)]
 pub enum CrdsData {
-  LegacyContactInfo(LegacyContactInfo),    // OK len:254
-  Vote(VoteIndex, Vote),                   // OK len:472
-  LowestSlot(u8, LowestSlot),              // OK len:185
-  SnapshotHashes(SnapshotHashes),          // OK len:240
-  AccountsHashes(SnapshotHashes),          // OK len:800
-  EpochSlots(EpochSlotsIndex, EpochSlots), // OK len:1049
-  LegacyVersion(LegacyVersion),            // OK len:163
-  Version(Version),                        // OK len:167
-  NodeInstance(NodeInstance),              // OK len:168
-  DuplicateShred(),                        // ??
+  LegacyContactInfo(Box<LegacyContactInfo>),            // OK len:254
+  Vote(VoteIndex, Vote),                                // OK len:472
+  LowestSlot(u8, LowestSlot),                           // OK len:185
+  SnapshotHashes(SnapshotHashes),                       // OK len:240
+  AccountsHashes(SnapshotHashes),                       // OK len:800
+  EpochSlots(EpochSlotsIndex, EpochSlots),              // OK len:1049
+  LegacyVersion(LegacyVersion),                         // OK len:163
+  Version(Version),                                     // OK len:167
+  NodeInstance(NodeInstance),                           // OK len:168
+  DuplicateShred(),                                     // ??
   IncrementalSnapshotHashes(IncrementalSnapshotHashes), // OK len:360
-  ContactInfo(),                           // ??
+  ContactInfo(),                                        // ??
 }
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Debug)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct CrdsValue {
   pub signature: Signature,
   pub data: CrdsData,
@@ -215,6 +215,27 @@ impl CrdsValue {
     let signable_data = serialize(&data).expect("failed to serialize CrdsData");
     let signature = keypair.sign_message(&signable_data);
     Self { signature, data }
+  }
+}
+
+impl fmt::Debug for CrdsValue {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    match &self.data {
+      CrdsData::LegacyContactInfo(info) => write!(f, "LegacyContactInfo info:{info:?}"),
+      CrdsData::Vote(_, _) => write!(f, "Vote"),
+      CrdsData::LowestSlot(_, _) => write!(f, "LowestSlot"),
+      CrdsData::SnapshotHashes(snapshot) => write!(f, "SnapshotHashes snapshot:{snapshot:?}"),
+      CrdsData::AccountsHashes(snapshot) => write!(f, "AccountsHashes snapshot:{snapshot:?}"),
+      CrdsData::EpochSlots(_, _) => write!(f, "EpochSlots"),
+      CrdsData::LegacyVersion(version) => write!(f, "LegacyVersion version:{version:?}"),
+      CrdsData::Version(version) => write!(f, "Version version:{version:?}"),
+      CrdsData::NodeInstance(node_instance) => {
+        write!(f, "NodeInstance nodeInstance:{node_instance:?}")
+      },
+      CrdsData::DuplicateShred() => write!(f, "DuplicateShred"),
+      CrdsData::IncrementalSnapshotHashes(_) => write!(f, "IncrementalSnapshotHashes"),
+      CrdsData::ContactInfo() => write!(f, "ContactInfo"),
+    }
   }
 }
 
@@ -232,18 +253,21 @@ impl Default for CrdsFilter {
       let seed: u64 = seed.checked_shl(64 - mask_bits).unwrap_or(0x0);
       seed | (!0u64).checked_shr(mask_bits).unwrap_or(!0x0)
     }
+
+    #[allow(clippy::cast_possible_truncation)]
+    #[allow(clippy::cast_sign_loss)]
     fn mask_bits(num_items: f64, max_items: f64) -> u32 {
       // for small ratios this can result in a negative number, ensure it returns 0 instead
       ((num_items / max_items).log2().ceil()).max(0.0) as u32
     }
 
-    let max_items = 1287f64;
-    const FALSE_RATE: f64 = 0.1f64;
+    let max_items: u32 = 1287;
+    let num_items: u32 = 512;
+    let false_rate: f64 = 0.1f64;
     let max_bits = 7424u32;
-    let num_items: usize = 512;
-    let mask_bits = mask_bits(num_items as f64, max_items);
+    let mask_bits = mask_bits(f64::from(num_items), f64::from(max_items));
 
-    let bloom: Bloom<Hash> = Bloom::random(max_items as usize, FALSE_RATE, max_bits as usize);
+    let bloom: Bloom<Hash> = Bloom::random(max_items as usize, false_rate, max_bits as usize);
 
     CrdsFilter {
       filter: bloom,
@@ -281,12 +305,12 @@ impl Pong {
   ) -> Result<Self, BincodeError> {
     let token = serialize(&ping.token)?;
     let hash = hash::hashv(&[PING_PONG_HASH_PREFIX, &token]);
-    let pong = Pong {
+    let pong_response = Pong {
       from: keypair.pubkey(),
       hash,
       signature: keypair.sign_message(hash.as_ref()),
     };
-    Ok(pong)
+    Ok(pong_response)
   }
 }
 
@@ -305,18 +329,24 @@ pub enum Protocol {
 mod tests {
   use super::*;
   #[test]
-  fn test_serialize() {
+  fn test_sigh_crds_data() {
     let keypair = Keypair::new();
 
-    //let crds_data = CrdsData::Vote();
-    let crds_data = CrdsData::LegacyContactInfo(LegacyContactInfo::default());
+    let crds_data = CrdsData::LegacyContactInfo(Box::new(LegacyContactInfo::default()));
     let crds_value = CrdsValue::new_signed(crds_data.clone(), &keypair);
-    println!("crds_value: {:?}", crds_value);
+
+    let pubkey = keypair.pubkey();
+    let message_bytes = serialize(&crds_data).expect("failed to serialize CrdsData");
+    assert_eq!(
+      crds_value.signature.verify(pubkey.as_ref(), &message_bytes),
+      true
+    );
   }
 
   #[test]
   fn test_crds_filter() {
     let crds_filter = CrdsFilter::default();
-    println!("crds_filter: {:?}", crds_filter);
+    assert_eq!(crds_filter.filter.keys.len(), 3);
+    assert_eq!(crds_filter.filter.bits.len(), 6168);
   }
 }

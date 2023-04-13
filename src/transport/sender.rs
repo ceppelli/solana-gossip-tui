@@ -32,7 +32,7 @@ pub(crate) fn spawn_sender(
                 .unwrap_or(());
 
               if trace {
-                println!("[udp_sender_t] message processed:{}", counter);
+                println!("[udp_sender_t] message processed:{counter}");
               }
             },
           }
@@ -41,13 +41,9 @@ pub(crate) fn spawn_sender(
         if let Ok(data) = rx.recv_timeout(RECV_TIMEOUT) {
           if let Some(addr) = data.addr {
             if let Some(buf) = data.data(..) {
-              // if trace {
-              //   println!("[udp_sender_t] index:{} sending to addr:{:?}", index, addr);
-              // }
-
-              if let Err(e) = socket.send_to(buf, addr) {
+              if let Err(err) = socket.send_to(buf, addr) {
                 if trace {
-                  println!("[udp_sender_t] index:{} sending Err:{:?}", counter, e);
+                  println!("[udp_sender_t] index:{counter} sending err:{err:?}");
                 }
               }
 

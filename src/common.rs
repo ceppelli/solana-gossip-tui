@@ -9,31 +9,39 @@ use std::{
 use crate::logic::spawn_logic;
 use crate::transport::{receiver::spawn_receiver, sender::spawn_sender, CtrlCmd, Payload, Stats};
 use crate::{
-  app::AppContext,
+  app::Context,
   protocol::{LegacyContactInfo, Version},
 };
 
 #[derive(Debug)]
-#[allow(clippy::large_enum_variant)]
 pub enum Data {
-  LegacyContactInfo(LegacyContactInfo),
+  LegacyContactInfo(Box<LegacyContactInfo>),
   Version(Version),
 }
 
 #[allow(clippy::type_complexity)]
 pub fn init_threads(
-  ctx: &mut AppContext,
-) -> io::Result<(mpsc::Receiver<Data>, mpsc::Receiver<Stats>, Vec<JoinHandle<()>>)> {
-  let entrypoint_addr = parse_addr(&ctx.model.entrypoints[1]);
-
-  if entrypoint_addr.is_none() {
+  ctx: &mut Context,
+) -> io::Result<(
+  mpsc::Receiver<Data>,
+  mpsc::Receiver<Stats>,
+  Vec<JoinHandle<()>>,
+)> {
+  let entrypoint_str = if let Some(entrypoint) = &ctx.model.entrypoint {
+    entrypoint.as_str()
+  } else {
     return Err(io::Error::new(
       io::ErrorKind::Other,
-      "invalid entrypoint address",
+      "entrypoint address not selected",
     ));
-  }
+  };
 
-  let entrypoint_addr = entrypoint_addr.unwrap();
+  let Some(entrypoint_addr) = parse_addr(entrypoint_str) else {
+          return Err(io::Error::new(
+            io::ErrorKind::Other,
+            "invalid entrypoint address",
+          ));
+        };
 
   let gossip_local_ip_addr = IpAddr::V4(Ipv4Addr::UNSPECIFIED);
   let gossip_local_listener_addr = SocketAddr::new(gossip_local_ip_addr, ctx.model.listern_port);
@@ -43,7 +51,7 @@ pub fn init_threads(
 
   let socket = Arc::new(socket);
   if ctx.trace {
-    println!("[main] gossip_addr:{:?}", gossip_local_listener_addr);
+    println!("[main] gossip_addr:{gossip_local_listener_addr:?}");
   }
 
   // receiver
@@ -66,7 +74,13 @@ pub fn init_threads(
   let (data_tx, data_rx) = mpsc::channel::<Data>();
 
   let trace = ctx.trace;
-  let receiver_t = spawn_receiver(socket.clone(), receiver_tx, ctrl_receiver_rx, stats_tx.clone(), trace)?;
+  let receiver_t = spawn_receiver(
+    socket.clone(),
+    receiver_tx,
+    ctrl_receiver_rx,
+    stats_tx.clone(),
+    trace,
+  )?;
   let sender_t = spawn_sender(socket, sender_rx, ctrl_sender_rx, stats_tx.clone(), trace)?;
   let logic_t = spawn_logic(
     gossip_local_listener_addr,

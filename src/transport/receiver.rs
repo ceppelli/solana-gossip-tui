@@ -30,7 +30,7 @@ pub(crate) fn spawn_receiver(
                 .unwrap_or(());
 
               if trace {
-                println!("[udp_receiver_t] message processed:{}", counter);
+                println!("[udp_receiver_t] message processed:{counter}");
               }
             },
           }
@@ -80,9 +80,9 @@ pub(crate) fn spawn_receiver(
 
             counter += 1;
           },
-          Err(e) => {
+          Err(err) => {
             if trace {
-              println!("[udp_receiver_t] index:{counter} recv function failed: {e:?}");
+              println!("[udp_receiver_t] index:{counter} recv function err:{err:?}");
             }
           },
         }

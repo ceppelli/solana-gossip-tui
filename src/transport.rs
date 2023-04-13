@@ -45,7 +45,8 @@ impl Default for Payload {
 }
 
 impl Payload {
-  pub fn populate_packet<T: Serialize>(
+  #[allow(clippy::cast_possible_truncation)]
+  pub(crate) fn populate_packet<T: Serialize>(
     &mut self,
     dest: Option<SocketAddr>,
     data: &T,
@@ -58,7 +59,6 @@ impl Payload {
         self.addr = dest;
       },
       Err(err) => {
-        //println!("[] error: {:?}", err);
         return Err(err);
       },
     }
@@ -66,7 +66,7 @@ impl Payload {
     Ok(())
   }
 
-  pub fn deserialize_slice<T, I>(&self, index: I) -> BincodeResult<T>
+  pub(crate) fn deserialize_slice<T, I>(&self, index: I) -> BincodeResult<T>
   where
     T: serde::de::DeserializeOwned,
     I: SliceIndex<[u8], Output = [u8]>,

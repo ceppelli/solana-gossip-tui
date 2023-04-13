@@ -1,13 +1,14 @@
+use std::io::{self, Stdout};
+
 use crossterm::{
   event::{DisableMouseCapture, EnableMouseCapture},
   execute,
   terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
 
-use std::io::{self, Stdout};
-
 use tui::{backend::CrosstermBackend, Terminal};
 
+#[allow(clippy::module_name_repetitions)]
 pub struct XTerminal {
   pub terminal: tui::Terminal<CrosstermBackend<Stdout>>,
 }
