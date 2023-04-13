@@ -8,7 +8,9 @@ use std::{
     thread::{Builder, JoinHandle},
 };
 
-use crate::transport::{CtrlCmd, Payload, Stats, StatsId, RECV_TIMEOUT};
+use solana_gossip_proto::wire::Payload;
+
+use crate::transport::{CtrlCmd, Stats, StatsId, RECV_TIMEOUT};
 
 pub(crate) fn spawn_sender(
     socket: Arc<UdpSocket>,

@@ -9,14 +9,17 @@ use std::{
     time::Duration,
 };
 
+use solana_gossip_proto::{
+    protocol::{CrdsData, CrdsFilter, CrdsValue, LegacyContactInfo, Ping, Pong, Protocol},
+    wire::Payload,
+};
+use solana_sdk::{signature::Keypair, signer::Signer};
+
 use crate::{
     common::Data,
-    protocol::{CrdsData, CrdsFilter, CrdsValue, LegacyContactInfo, Ping, Pong, Protocol},
-    transport::{CtrlCmd, Payload, Stats, StatsId},
+    transport::{CtrlCmd, Stats, StatsId},
     utils::since_the_epoch_millis,
 };
-
-use solana_sdk::{signature::Keypair, signer::Signer};
 
 pub const RECV_TIMEOUT: Duration = Duration::from_millis(30);
 
@@ -69,7 +72,7 @@ pub(crate) fn spawn_logic(
               "######## [logic_t] i:{counter} #### addr:{from_addr:?} #### len:{len} ################ 1",
             );
           }
-          let r: Result<Protocol, Box<bincode::ErrorKind>> = payload.deserialize_slice(..);
+          let r: Result<Protocol, Box<dyn std::error::Error>> = payload.deserialize_slice(..);
           match r {
             Ok(proto) => match proto {
               Protocol::PingMessage(ping) =>

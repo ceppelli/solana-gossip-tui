@@ -6,12 +6,14 @@ use std::{
     time::Duration,
 };
 
-use crate::logic::spawn_logic;
-use crate::transport::{receiver::spawn_receiver, sender::spawn_sender, CtrlCmd, Payload, Stats};
-use crate::{
-    app::Context,
+use solana_gossip_proto::{
     protocol::{LegacyContactInfo, Version},
+    wire::Payload,
 };
+
+use crate::app::Context;
+use crate::logic::spawn_logic;
+use crate::transport::{receiver::spawn_receiver, sender::spawn_sender, CtrlCmd, Stats};
 
 #[derive(Debug)]
 pub enum Data {

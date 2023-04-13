@@ -1,0 +1,23 @@
+[package]
+name = "solana_gossip_async"
+version = "0.1.0"
+edition = "2021"
+authors = ["Luca Ceppelli <ceppelli@gmail.com>"]
+description = """
+An attempt to reverse engineer the Solana Gossip protocol
+"""
+readme = "README.md"
+license = "MIT"
+keywords = [ "solana", "gossip", "blockchain", "cli"]
+categories = ["library"]
+repository = "https://github.com/ceppelli/solana-gossip-tui"
+
+[dependencies]
+# https://crates.io/crates/solana-sdk
+solana-sdk = "1.15.1"
+
+solana_gossip_proto = { path = "../proto" }
+
+[[bin]]
+name = "solana_gossip_async"
+path = "src/bin/main_cli.rs"

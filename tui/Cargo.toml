@@ -1,0 +1,29 @@
+[package]
+name = "solana_gossip_tui"
+version = "0.1.0"
+edition = "2021"
+authors = ["Luca Ceppelli <ceppelli@gmail.com>"]
+description = """
+An attempt to reverse engineer the Solana Gossip protocol
+"""
+readme = "README.md"
+license = "MIT"
+keywords = [ "solana", "gossip", "blockchain", "tui"]
+categories = ["cli"]
+repository = "https://github.com/ceppelli/solana-gossip-tui"
+
+default-run = "solana_gossip_tui"
+
+[dependencies]
+# https://crates.io/crates/crossterm
+crossterm = { version = "0.25", features = ["event-stream"], optional = false }
+# https://crates.io/crates/tui
+tui = { version = "0.19.0", features = ["crossterm"], default-features = false }
+# https://crates.io/crates/solana-sdk
+solana-sdk = "1.15.1"
+
+solana_gossip_proto = { path = "../proto" }
+
+[[bin]]
+name = "solana_gossip_tui"
+path = "src/main.rs"

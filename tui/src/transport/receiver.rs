@@ -6,7 +6,9 @@ use std::{
     thread::{Builder, JoinHandle},
 };
 
-use crate::transport::{CtrlCmd, Payload, Stats, StatsId, PACKET_DATA_SIZE};
+use solana_gossip_proto::wire::{Payload, PACKET_DATA_SIZE};
+
+use crate::transport::{CtrlCmd, Stats, StatsId};
 
 pub(crate) fn spawn_receiver(
     socket: Arc<UdpSocket>,

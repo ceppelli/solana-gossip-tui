@@ -1,7 +1,6 @@
 mod app;
 mod common;
 mod logic;
-mod protocol;
 mod stm;
 mod terminal;
 mod transport;
@@ -15,13 +14,13 @@ use std::{
 };
 
 use crossterm::event::{self, Event, KeyCode};
+use solana_gossip_proto::protocol::{LegacyContactInfo, LegacyVersion2};
 use tui::{backend::Backend, Terminal};
 
 use crate::{
     app::Context,
     common::{init_threads, Data},
     logic::RECV_TIMEOUT,
-    protocol::{LegacyContactInfo, LegacyVersion2},
     stm::{events, stm_main::MainStm, States},
     transport::{CtrlCmd, Stats},
 };
