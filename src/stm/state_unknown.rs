@@ -85,7 +85,7 @@ mod tests {
     #[test]
     fn test_state_help() -> Result<(), String> {
         let state = UnknownState;
-        assert_eq!(state.help_text().len(), 23);
+        assert_eq!(state.help_text().len(), 31);
 
         Ok(())
     }

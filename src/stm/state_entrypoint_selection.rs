@@ -173,7 +173,7 @@ mod tests {
     #[test]
     fn test_state_help() -> Result<(), String> {
         let state = EntrypointSelectionState::default();
-        assert_eq!(state.help_text().len(), 178);
+        assert_eq!(state.help_text().len(), 196);
 
         Ok(())
     }
