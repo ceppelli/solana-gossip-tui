@@ -11,7 +11,7 @@ use std::{
 
 use crate::{
   common::Data,
-  protocol::{CrdsData, CrdsFilter, CrdsValue, LegacyContactInfo, Pong, Protocol},
+  protocol::{CrdsData, CrdsFilter, CrdsValue, LegacyContactInfo, Ping, Pong, Protocol},
   transport::{CtrlCmd, Payload, Stats, StatsId},
   utils::since_the_epoch_millis,
 };
@@ -31,7 +31,6 @@ pub(crate) fn spawn_logic(
   data_tx: Sender<Data>,
   trace: bool,
 ) -> io::Result<JoinHandle<()>> {
-  #[allow(clippy::let_and_return)]
   Builder::new().name("logic_t".to_string()).spawn(move || {
     let mut counter: u32 = 0;
 
@@ -48,8 +47,8 @@ pub(crate) fn spawn_logic(
     };
 
     'main_l: loop {
-      match ctrl_rx.try_recv() {
-        Ok(ctrl_msg) => match ctrl_msg {
+      if let Ok(ctrl_msg) = ctrl_rx.try_recv() {
+        match ctrl_msg {
           CtrlCmd::Stop => break 'main_l,
           CtrlCmd::Counter => {
             stats_tx
@@ -60,63 +59,37 @@ pub(crate) fn spawn_logic(
               println!("[logic_t] index:{counter} received CtrlCmd::Counter");
             }
           },
-        },
-        Err(_e) => {},
+        }
       }
-
       if let Ok(payload) = rx.recv_timeout(RECV_TIMEOUT) {
         if let Some(from_addr) = payload.addr {
           let len = payload.len;
           if trace {
             println!(
-              "######## [logic_t] i:{counter} #### addr:{:?} #### len:{len} ################ 1",
-              from_addr
+              "######## [logic_t] i:{counter} #### addr:{from_addr:?} #### len:{len} ################ 1",
             );
           }
           let r: Result<Protocol, Box<bincode::ErrorKind>> = payload.deserialize_slice(..);
           match r {
             Ok(proto) => match proto {
-              Protocol::PingMessage(ping) => {
-                if trace {
-                  println!("# PingMessage ping:{:?}", ping);
-                }
-                let pong_r = Pong::new(&ping, &keypair_arc);
-                if let Ok(pong) = pong_r {
-                  let proto_pong = Protocol::PongMessage(pong);
-
-                  let mut data = Payload::default();
-                  let r = data.populate_packet(Some(from_addr), &proto_pong);
-
-                  match r {
-                    Ok(_) => {
-                      tx.send(data).unwrap_or(());
-                    },
-                    Err(err) => {
-                      if trace {
-                        println!("[logic_t] index:{counter} err:{:?}", err);
-                      }
-                    },
-                  }
-                }
-              },
+              Protocol::PingMessage(ping) =>
+                    send_pong_response(&ping, from_addr, &keypair_arc, &tx, trace, counter),
               Protocol::PongMessage(pong) => {
                 if trace {
                   println!(
-                    "# len:{len} PongMessage from_addr:{:?} pong:{:?}",
-                    from_addr, pong
+                    "# len:{len} PongMessage from_addr:{from_addr:?} pong:{pong:?}",
                   );
                 }
               },
               Protocol::PullResponse(from_key, crds_values) => {
                 if trace {
                   println!(
-                    "# len:{len} PullResponse from_addr:{:?} from_key:{:?}",
-                    from_addr, from_key
+                    "# len:{len} PullResponse from_addr:{from_addr:?} from_key:{from_key:?}"
                   );
                 }
                 for value in &crds_values {
                   if trace {
-                    println!("# {:?}", crds_data_print(value));
+                    println!("# {value:?}");
                   }
 
                   match &value.data {
@@ -134,13 +107,13 @@ pub(crate) fn spawn_logic(
               },
               _ => {
                 if trace {
-                  println!("# ??? err protocol:{:?}", proto);
+                  println!("# ??? err protocol:{proto:?}");
                 }
               },
             },
             Err(err) => {
               if trace {
-                println!("# ??? err:{:?}", err);
+                println!("# ??? err:{err:?}");
               }
             },
           }
@@ -152,32 +125,7 @@ pub(crate) fn spawn_logic(
         }
       }
 
-      let crds_data = CrdsData::LegacyContactInfo(contact_info.clone());
-      let crds_value = CrdsValue::new_signed(crds_data.clone(), &keypair_arc);
-      let crds_filter = CrdsFilter::default();
-
-      let protocol = Protocol::PullRequest(crds_filter, crds_value);
-
-      if trace && counter % 50 == 0 {
-        println!("#===== [logic_t] ==================================");
-        println!("# index:{counter} LegacyContactInfo has been sended");
-        println!("#----- [logic_t] ----------------------------------");
-      }
-
-      let mut data = Payload::default();
-
-      let r = data.populate_packet(Some(entrypoint_addr), &protocol);
-
-      match r {
-        Ok(_) => {
-          tx.send(data).unwrap_or(());
-        },
-        Err(err) => {
-          if trace {
-            println!("[logic_t] index:{counter} err:{:?}", err);
-          }
-        },
-      }
+      send_pull_request(contact_info.clone(), &keypair_arc, entrypoint_addr, &tx, trace, counter);
     }
 
     if trace {
@@ -186,31 +134,64 @@ pub(crate) fn spawn_logic(
   })
 }
 
-fn crds_data_print(value: &CrdsValue) -> String {
-  match value.data.clone() {
-    CrdsData::LegacyContactInfo(info) => {
-      format!("LegacyContactInfo info:{:?}", info)
+fn send_pull_request(
+  contact_info: LegacyContactInfo,
+  keypair_arc: &Arc<Keypair>,
+  entrypoint_addr: SocketAddr,
+  tx: &Sender<Payload>,
+  trace: bool,
+  counter: u32,
+) {
+  let crds_data = CrdsData::LegacyContactInfo(Box::new(contact_info));
+  let crds_value = CrdsValue::new_signed(crds_data, keypair_arc);
+  let crds_filter = CrdsFilter::default();
+
+  let protocol = Protocol::PullRequest(crds_filter, crds_value);
+  let mut data = Payload::default();
+
+  let r = data.populate_packet(Some(entrypoint_addr), &protocol);
+
+  match r {
+    Ok(_) => {
+      tx.send(data).unwrap_or(());
     },
-    CrdsData::Vote(_, _) => "Vote".to_string(),
-    CrdsData::LowestSlot(_, _) => "LowestSlot".to_string(),
-    CrdsData::SnapshotHashes(snapshot) => {
-      format!("SnapshotHashes snapshot:{:?}", snapshot)
+    Err(err) => {
+      if trace {
+        println!("[logic_t] index:{counter} err:{err:?}");
+      }
     },
-    CrdsData::AccountsHashes(snapshot) => {
-      format!("AccountsHashes snapshot:{:?}", snapshot)
-    },
-    CrdsData::EpochSlots(_, _) => "EpochSlots".to_string(),
-    CrdsData::LegacyVersion(version) => {
-      format!("LegacyVersion version:{:?}", version)
-    },
-    CrdsData::Version(version) => {
-      format!("Version version:{:?}", version)
-    },
-    CrdsData::NodeInstance(node_instance) => {
-      format!("NodeInstance nodeInstance:{:?}", node_instance)
-    },
-    CrdsData::DuplicateShred() => "DuplicateShred".to_string(),
-    CrdsData::IncrementalSnapshotHashes(_) => "IncrementalSnapshotHashes".to_string(),
-    CrdsData::ContactInfo() => "ContactInfo".to_string(),
+  }
+}
+
+fn send_pong_response(
+  ping: &Ping,
+  from_addr: SocketAddr,
+  keypair_arc: &Arc<Keypair>,
+  tx: &Sender<Payload>,
+  trace: bool,
+  counter: u32,
+) {
+  if trace {
+    println!("# PingMessage ping:{ping:?}");
+  }
+
+  let pong_r = Pong::new(ping, keypair_arc);
+
+  if let Ok(pong) = pong_r {
+    let proto_pong = Protocol::PongMessage(pong);
+
+    let mut data = Payload::default();
+    let r = data.populate_packet(Some(from_addr), &proto_pong);
+
+    match r {
+      Ok(_) => {
+        tx.send(data).unwrap_or(());
+      },
+      Err(err) => {
+        if trace {
+          println!("# index:{counter} err:{err:?}");
+        }
+      },
+    }
   }
 }

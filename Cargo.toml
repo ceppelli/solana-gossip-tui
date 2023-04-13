@@ -6,10 +6,11 @@ authors = ["Luca Ceppelli <ceppelli@gmail.com>"]
 description = """
 An attempt to reverse engineer the Solana Gossip protocol
 """
-keywords = [ "solana", "gossip", "blockchain", "tui"]
-repository = "https://github.com/ceppelli/solana-gossip-tui"
 readme = "README.md"
 license = "MIT"
+keywords = [ "solana", "gossip", "blockchain", "tui"]
+categories = ["cli"]
+repository = "https://github.com/ceppelli/solana-gossip-tui"
 
 default-run = "solana_gossip_tui"
 

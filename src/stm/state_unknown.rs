@@ -1,5 +1,5 @@
 use super::{events::Event, State, States};
-use crate::app::AppContext;
+use crate::app::Context;
 use crate::ui::core::{centered_rect, clear_box, draw_box};
 use crossterm::event::KeyCode;
 use tui::{backend::Backend, Frame};
@@ -7,20 +7,16 @@ use tui::{backend::Backend, Frame};
 pub struct UnknownState;
 
 impl State for UnknownState {
-  #[allow(clippy::let_and_return)]
-  fn on_event(&mut self, event: Event, ctx: &mut AppContext) -> Option<States> {
-    let to_state = match event {
-      Event::Key { key_code: KeyCode::Esc } => Some(States::Home),
-      _ => {
-        ctx.debug(format!("[UnknownS] on_event {:?} not match", event));
-        None
-      },
-    };
-
-    to_state
+  fn on_event(&mut self, event: Event, ctx: &mut Context) -> Option<States> {
+    if let Event::Key { key_code: KeyCode::Esc } = event {
+      Some(States::Home)
+    } else {
+      ctx.debug(format!("[UnknownS] on_event {event:?} not match"));
+      None
+    }
   }
 
-  fn ui<B: Backend>(&self, f: &mut Frame<B>, _ctx: &mut AppContext) {
+  fn ui<B: Backend>(&self, f: &mut Frame<B>, _ctx: &mut Context) {
     let size = f.size();
     draw_box(f, size, " Unknow State ");
 
@@ -44,7 +40,7 @@ mod tests {
 
   #[test]
   fn test_unknown_state() -> Result<(), String> {
-    let mut ctx = AppContext::new(String::from("APP_ID"), String::from("APP_VERSION"));
+    let mut ctx = Context::new(String::from("APP_ID"), String::from("APP_VERSION"));
 
     let event = Event::Key { key_code: KeyCode::Esc };
 
@@ -60,7 +56,7 @@ mod tests {
   fn test_ui() {
     let backend = TestBackend::new(7, 4);
     let mut terminal = Terminal::new(backend).unwrap();
-    let mut ctx = AppContext::new_for_testing();
+    let mut ctx = Context::new_for_testing();
 
     let state = UnknownState;
 

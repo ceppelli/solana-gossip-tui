@@ -6,7 +6,7 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub struct AppModel {
+pub struct Model {
   pub debug_messages_stateful: StatefulList<String>,
   pub home_stateful_table: StatefulTable<String>,
   pub home_stats_stateful_list: StatefulList<String>,
@@ -17,7 +17,7 @@ pub struct AppModel {
   pub listern_port: u16,
 }
 
-impl Default for AppModel {
+impl Default for Model {
   fn default() -> Self {
     let entrypoints = vec![
       "entrypoint.devnet.solana.com:8001",
@@ -30,13 +30,13 @@ impl Default for AppModel {
     .into_iter()
     .map(String::from)
     .collect::<Vec<String>>();
-    AppModel {
+    Model {
       debug_messages_stateful: StatefulList::default(),
       home_stateful_table: StatefulTable::default(),
       home_stats_stateful_list: StatefulList::with_items(vec![
         "[Receiver] processed msgs #:0".to_string(),
         "[Sender] processed msgs #:0".to_string(),
-        "[Logic] processed msgs #:0".to_string()
+        "[Logic] processed msgs #:0".to_string(),
       ]),
       entrypoints_stateful: StatefulList::default(),
       entrypoints,
@@ -46,22 +46,22 @@ impl Default for AppModel {
   }
 }
 
-pub struct AppContext {
+pub struct Context {
   app_id: String,
   app_version: String,
 
-  pub model: AppModel,
+  pub model: Model,
   pub trace: bool,
 
   pub ctrl_txs: Vec<Sender<CtrlCmd>>,
 }
 
-impl AppContext {
+impl Context {
   pub fn new(app_id: String, app_version: String) -> Self {
     Self {
       app_id,
       app_version,
-      model: AppModel::default(),
+      model: Model::default(),
       trace: false,
       ctrl_txs: Vec::new(),
     }
@@ -80,13 +80,13 @@ impl AppContext {
 mod mock_test {
   use super::*;
 
-  impl AppContext {
+  impl Context {
     #[allow(unused)]
     pub fn new_for_testing() -> Self {
       Self {
         app_id: String::from("_app_id_"),
         app_version: String::from("_app_version_"),
-        model: AppModel::default(),
+        model: Model::default(),
         trace: false,
         ctrl_txs: Vec::new(),
       }
