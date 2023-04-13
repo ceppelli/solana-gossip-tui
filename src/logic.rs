@@ -1,19 +1,19 @@
 use std::{
-  io,
-  net::SocketAddr,
-  sync::{
-    mpsc::{Receiver, Sender},
-    Arc,
-  },
-  thread::{Builder, JoinHandle},
-  time::Duration,
+    io,
+    net::SocketAddr,
+    sync::{
+        mpsc::{Receiver, Sender},
+        Arc,
+    },
+    thread::{Builder, JoinHandle},
+    time::Duration,
 };
 
 use crate::{
-  common::Data,
-  protocol::{CrdsData, CrdsFilter, CrdsValue, LegacyContactInfo, Ping, Pong, Protocol},
-  transport::{CtrlCmd, Payload, Stats, StatsId},
-  utils::since_the_epoch_millis,
+    common::Data,
+    protocol::{CrdsData, CrdsFilter, CrdsValue, LegacyContactInfo, Ping, Pong, Protocol},
+    transport::{CtrlCmd, Payload, Stats, StatsId},
+    utils::since_the_epoch_millis,
 };
 
 use solana_sdk::{signature::Keypair, signer::Signer};
@@ -22,16 +22,16 @@ pub const RECV_TIMEOUT: Duration = Duration::from_millis(30);
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn spawn_logic(
-  gossip_local_listener_addr: SocketAddr,
-  entrypoint_addr: SocketAddr,
-  tx: Sender<Payload>,
-  rx: Receiver<Payload>,
-  ctrl_rx: Receiver<CtrlCmd>,
-  stats_tx: Sender<Stats>,
-  data_tx: Sender<Data>,
-  trace: bool,
+    gossip_local_listener_addr: SocketAddr,
+    entrypoint_addr: SocketAddr,
+    tx: Sender<Payload>,
+    rx: Receiver<Payload>,
+    ctrl_rx: Receiver<CtrlCmd>,
+    stats_tx: Sender<Stats>,
+    data_tx: Sender<Data>,
+    trace: bool,
 ) -> io::Result<JoinHandle<()>> {
-  Builder::new().name("logic_t".to_string()).spawn(move || {
+    Builder::new().name("logic_t".to_string()).spawn(move || {
     let mut counter: u32 = 0;
 
     let keypair = Keypair::new();
@@ -135,63 +135,63 @@ pub(crate) fn spawn_logic(
 }
 
 fn send_pull_request(
-  contact_info: LegacyContactInfo,
-  keypair_arc: &Arc<Keypair>,
-  entrypoint_addr: SocketAddr,
-  tx: &Sender<Payload>,
-  trace: bool,
-  counter: u32,
+    contact_info: LegacyContactInfo,
+    keypair_arc: &Arc<Keypair>,
+    entrypoint_addr: SocketAddr,
+    tx: &Sender<Payload>,
+    trace: bool,
+    counter: u32,
 ) {
-  let crds_data = CrdsData::LegacyContactInfo(Box::new(contact_info));
-  let crds_value = CrdsValue::new_signed(crds_data, keypair_arc);
-  let crds_filter = CrdsFilter::default();
+    let crds_data = CrdsData::LegacyContactInfo(Box::new(contact_info));
+    let crds_value = CrdsValue::new_signed(crds_data, keypair_arc);
+    let crds_filter = CrdsFilter::default();
 
-  let protocol = Protocol::PullRequest(crds_filter, crds_value);
-  let mut data = Payload::default();
+    let protocol = Protocol::PullRequest(crds_filter, crds_value);
+    let mut data = Payload::default();
 
-  let r = data.populate_packet(Some(entrypoint_addr), &protocol);
+    let r = data.populate_packet(Some(entrypoint_addr), &protocol);
 
-  match r {
-    Ok(_) => {
-      tx.send(data).unwrap_or(());
-    },
-    Err(err) => {
-      if trace {
-        println!("[logic_t] index:{counter} err:{err:?}");
-      }
-    },
-  }
+    match r {
+        Ok(_) => {
+            tx.send(data).unwrap_or(());
+        }
+        Err(err) => {
+            if trace {
+                println!("[logic_t] index:{counter} err:{err:?}");
+            }
+        }
+    }
 }
 
 fn send_pong_response(
-  ping: &Ping,
-  from_addr: SocketAddr,
-  keypair_arc: &Arc<Keypair>,
-  tx: &Sender<Payload>,
-  trace: bool,
-  counter: u32,
+    ping: &Ping,
+    from_addr: SocketAddr,
+    keypair_arc: &Arc<Keypair>,
+    tx: &Sender<Payload>,
+    trace: bool,
+    counter: u32,
 ) {
-  if trace {
-    println!("# PingMessage ping:{ping:?}");
-  }
-
-  let pong_r = Pong::new(ping, keypair_arc);
-
-  if let Ok(pong) = pong_r {
-    let proto_pong = Protocol::PongMessage(pong);
-
-    let mut data = Payload::default();
-    let r = data.populate_packet(Some(from_addr), &proto_pong);
-
-    match r {
-      Ok(_) => {
-        tx.send(data).unwrap_or(());
-      },
-      Err(err) => {
-        if trace {
-          println!("# index:{counter} err:{err:?}");
-        }
-      },
+    if trace {
+        println!("# PingMessage ping:{ping:?}");
     }
-  }
+
+    let pong_r = Pong::new(ping, keypair_arc);
+
+    if let Ok(pong) = pong_r {
+        let proto_pong = Protocol::PongMessage(pong);
+
+        let mut data = Payload::default();
+        let r = data.populate_packet(Some(from_addr), &proto_pong);
+
+        match r {
+            Ok(_) => {
+                tx.send(data).unwrap_or(());
+            }
+            Err(err) => {
+                if trace {
+                    println!("# index:{counter} err:{err:?}");
+                }
+            }
+        }
+    }
 }
