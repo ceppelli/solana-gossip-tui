@@ -13,6 +13,11 @@ categories = ["library"]
 repository = "https://github.com/ceppelli/solana-gossip-tui"
 
 [dependencies]
+#tokio = { version = "1.27", features = ["net", "io-util", "macros"] }
+tokio = { version = "1.27", features = ["full"] }
+# https://crates.io/crates/udpflow
+udpflow = "0.1.0"
+
 # https://crates.io/crates/solana-sdk
 solana-sdk = "1.15.1"
 

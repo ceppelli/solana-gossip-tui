@@ -5,7 +5,6 @@ mod stm;
 mod terminal;
 mod transport;
 mod ui;
-mod utils;
 
 use std::{
     io,

@@ -204,7 +204,7 @@ pub enum CrdsData {
     ContactInfo(),                             // ??
 }
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Debug)]
 pub struct CrdsValue {
     pub signature: Signature,
     pub data: CrdsData,
@@ -218,20 +218,18 @@ impl CrdsValue {
     }
 }
 
-impl fmt::Debug for CrdsValue {
+impl fmt::Display for CrdsValue {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self.data {
-            CrdsData::LegacyContactInfo(info) => write!(f, "LegacyContactInfo info:{info:?}"),
+            CrdsData::LegacyContactInfo(_) => write!(f, "LegacyContactInfo"),
             CrdsData::Vote(_, _) => write!(f, "Vote"),
             CrdsData::LowestSlot(_, _) => write!(f, "LowestSlot"),
-            CrdsData::SnapshotHashes(snapshot) => write!(f, "SnapshotHashes snapshot:{snapshot:?}"),
-            CrdsData::AccountsHashes(snapshot) => write!(f, "AccountsHashes snapshot:{snapshot:?}"),
+            CrdsData::SnapshotHashes(_) => write!(f, "SnapshotHashes"),
+            CrdsData::AccountsHashes(_) => write!(f, "AccountsHashes"),
             CrdsData::EpochSlots(_, _) => write!(f, "EpochSlots"),
-            CrdsData::LegacyVersion(version) => write!(f, "LegacyVersion version:{version:?}"),
-            CrdsData::Version(version) => write!(f, "Version version:{version:?}"),
-            CrdsData::NodeInstance(node_instance) => {
-                write!(f, "NodeInstance nodeInstance:{node_instance:?}")
-            }
+            CrdsData::LegacyVersion(_) => write!(f, "LegacyVersion"),
+            CrdsData::Version(_) => write!(f, "Version"),
+            CrdsData::NodeInstance(_) => write!(f, "NodeInstance"),
             CrdsData::DuplicateShred() => write!(f, "DuplicateShred"),
             CrdsData::IncrementalSnapshotHashes(_) => write!(f, "IncrementalSnapshotHashes"),
             CrdsData::ContactInfo() => write!(f, "ContactInfo"),
@@ -279,7 +277,7 @@ impl Default for CrdsFilter {
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Debug)]
 pub struct PingGeneric<T> {
-    from: Pubkey,
+    pub from: Pubkey,
     token: T,
     signature: Signature,
 }
@@ -322,6 +320,19 @@ pub enum Protocol {
     PruneMessage(Pubkey),
     PingMessage(Ping),
     PongMessage(Pong),
+}
+
+impl fmt::Display for Protocol {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match &self {
+            Protocol::PullRequest(_, _) => write!(f, "PullRequest"),
+            Protocol::PullResponse(_, _) => write!(f, "PullResponse"),
+            Protocol::PushMessage(_, _) => write!(f, "PushMessage"),
+            Protocol::PruneMessage(_) => write!(f, "PruneMessage"),
+            Protocol::PingMessage(_) => write!(f, "PingMessage"),
+            Protocol::PongMessage(_) => write!(f, "PongMessage"),
+        }
+    }
 }
 
 //tests

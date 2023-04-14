@@ -8,4 +8,3 @@ pub mod stm;
 pub mod terminal;
 pub mod transport;
 pub mod ui;
-pub mod utils;
