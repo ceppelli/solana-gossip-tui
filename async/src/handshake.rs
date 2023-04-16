@@ -8,13 +8,11 @@ use solana_gossip_proto::{
 };
 use solana_sdk::{signature::Keypair, signer::Signer};
 
-use crate::connection::Connection;
+use crate::{connection::Connection, errors::Result};
 
 const UDP_TIMEOUT: u64 = 200; // 200msec
 
-pub async fn handshake(
-    conn: &mut Connection,
-) -> Result<Option<Box<LegacyContactInfo>>, Box<dyn std::error::Error>> {
+pub async fn handshake(conn: &mut Connection) -> Result<Option<Box<LegacyContactInfo>>> {
     let keypair = Keypair::new();
     let shred_version: u16 = 0;
 
@@ -45,10 +43,10 @@ pub async fn handshake(
             println!("[handshake] pong has been sended.");
 
             loop {
-
-                if let Ok(Ok(Some(payload))) = timeout(Duration::from_millis(UDP_TIMEOUT), conn.receive()).await {
-                    let after_pong_protocol: Result<Protocol, Box<dyn std::error::Error>> =
-                        payload.deserialize_slice(..);
+                if let Ok(Ok(Some(payload))) =
+                    timeout(Duration::from_millis(UDP_TIMEOUT), conn.receive()).await
+                {
+                    let after_pong_protocol = payload.deserialize_slice(..);
 
                     if let Ok(Protocol::PullResponse(_, values)) = after_pong_protocol {
                         for value in values {

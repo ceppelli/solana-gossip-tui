@@ -15,13 +15,9 @@ repository = "https://github.com/ceppelli/solana-gossip-tui"
 default-run = "solana_gossip_tui"
 
 [dependencies]
-# https://crates.io/crates/crossterm
 crossterm = { version = "0.25", features = ["event-stream"], optional = false }
-# https://crates.io/crates/tui
 tui = { version = "0.19.0", features = ["crossterm"], default-features = false }
-# https://crates.io/crates/solana-sdk
 solana-sdk = "1.15.1"
-
 solana_gossip_proto = { path = "../proto" }
 
 [[bin]]

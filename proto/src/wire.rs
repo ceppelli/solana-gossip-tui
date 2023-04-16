@@ -3,6 +3,8 @@ use std::{io, net::SocketAddr, slice::SliceIndex};
 use bincode::Options;
 use serde::Serialize;
 
+use crate::errors::Result;
+
 /// Maximum over-the-wire size of a Transaction
 ///   1280 is IPv6 minimum MTU
 ///   40 bytes is the size of the IPv6 header
@@ -32,7 +34,7 @@ impl Payload {
         &mut self,
         dest: Option<SocketAddr>,
         data: &T,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    ) -> Result<()> {
         let mut wr = io::Cursor::new(self.buffer_mut());
         let r = bincode::serialize_into(&mut wr, data);
         match r {
@@ -41,19 +43,19 @@ impl Payload {
                 self.addr = dest;
             }
             Err(err) => {
-                return Err(err);
+                return Err(err.into());
             }
         }
 
         Ok(())
     }
 
-    pub fn deserialize_slice<T, I>(&self, index: I) -> Result<T, Box<dyn std::error::Error>>
+    pub fn deserialize_slice<T, I>(&self, index: I) -> Result<T>
     where
         T: serde::de::DeserializeOwned,
         I: SliceIndex<[u8], Output = [u8]>,
     {
-        let bytes = self.data(index).ok_or(bincode::ErrorKind::SizeLimit)?;
+        let bytes = self.data(index).ok_or(bincode::Error::from(bincode::ErrorKind::SizeLimit))?;
         bincode::options()
             .with_limit(PACKET_DATA_SIZE as u64)
             .with_fixint_encoding()

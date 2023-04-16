@@ -72,7 +72,7 @@ pub(crate) fn spawn_logic(
               "######## [logic_t] i:{counter} #### addr:{from_addr:?} #### len:{len} ################ 1",
             );
           }
-          let r: Result<Protocol, Box<dyn std::error::Error>> = payload.deserialize_slice(..);
+          let r = payload.deserialize_slice(..);
           match r {
             Ok(proto) => match proto {
               Protocol::PingMessage(ping) =>

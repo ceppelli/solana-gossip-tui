@@ -4,7 +4,7 @@ use std::{
     net::{Ipv4Addr, SocketAddr},
 };
 
-use bincode::{serialize, Error as BincodeError};
+use bincode::serialize;
 use bv::BitVec;
 use serde::Serialize as SerdeSerialize;
 use serde_derive::{Deserialize, Serialize};
@@ -16,6 +16,8 @@ use solana_sdk::{
     signature::{Keypair, Signature, Signer},
     transaction::Transaction,
 };
+
+use crate::errors::Result;
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Debug)]
 pub struct LegacyContactInfo {
@@ -297,10 +299,7 @@ pub struct Pong {
 const PING_PONG_HASH_PREFIX: &[u8] = "SOLANA_PING_PONG".as_bytes();
 
 impl Pong {
-    pub fn new<T: SerdeSerialize>(
-        ping: &PingGeneric<T>,
-        keypair: &Keypair,
-    ) -> Result<Self, BincodeError> {
+    pub fn new<T: SerdeSerialize>(ping: &PingGeneric<T>, keypair: &Keypair) -> Result<Self> {
         let token = serialize(&ping.token)?;
         let hash = hash::hashv(&[PING_PONG_HASH_PREFIX, &token]);
         let pong_response = Pong {

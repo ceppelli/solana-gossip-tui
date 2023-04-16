@@ -5,6 +5,7 @@ use std::{
 
 use solana_sdk::signature::Keypair;
 
+use crate::errors::Result;
 use crate::protocol::{CrdsData, CrdsFilter, CrdsValue, LegacyContactInfo, Ping, Pong, Protocol};
 use crate::wire::Payload;
 
@@ -22,7 +23,7 @@ pub fn create_pull_request(
     contact_info: LegacyContactInfo,
     keypair: &Keypair,
     entrypoint_addr: SocketAddr,
-) -> Result<Payload, Box<dyn std::error::Error>> {
+) -> Result<Payload> {
     let crds_data = CrdsData::LegacyContactInfo(Box::new(contact_info));
     let crds_value = CrdsValue::new_signed(crds_data, keypair);
     let crds_filter = CrdsFilter::default();
@@ -39,7 +40,7 @@ pub fn create_pong_response(
     ping: &Ping,
     from_addr: SocketAddr,
     keypair: &Keypair,
-) -> Result<Payload, Box<dyn std::error::Error>> {
+) -> Result<Payload> {
     let value = Pong::new(ping, keypair)?;
     let protocol = Protocol::PongMessage(value);
 

@@ -2,18 +2,20 @@ use thiserror::Error;
 
 pub type Result<T> = ::std::result::Result<T, Error>;
 
+//pub type Error = Box<ErrorKind>;
 pub type Error = ErrorKind;
 
 #[derive(Debug, Error)]
 pub enum ErrorKind {
-    #[error("Invalid input parameter:{input}")]
-    InputError{
-      input: String,
-    },
+    #[error("Decode error")]
+    DecodeError,
+
+    #[error("Encode error")]
+    EncodeError,
 
     #[error(transparent)]
     IoError(#[from] std::io::Error),
 
     #[error(transparent)]
-    ProtoError(#[from] solana_gossip_proto::errors::Error),
+    BincodeError(#[from] bincode::Error),
 }

@@ -1,9 +1,10 @@
 use std::{env, net::SocketAddr, str::FromStr};
 
+use solana_gossip_async::errors::Result;
 use solana_gossip_async::{connection::Connection, handshake::handshake};
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> Result<()> {
     let addr = env::args()
         .nth(1)
         .unwrap_or_else(|| "141.98.219.218:8000".to_string());
