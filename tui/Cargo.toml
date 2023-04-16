@@ -1,6 +1,6 @@
 [package]
 name = "solana_gossip_tui"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 authors = ["Luca Ceppelli <ceppelli@gmail.com>"]
 description = """
@@ -16,8 +16,8 @@ default-run = "solana_gossip_tui"
 
 [dependencies]
 crossterm = { version = "0.25", features = ["event-stream"], optional = false }
-tui = { version = "0.19.0", features = ["crossterm"], default-features = false }
-solana-sdk = "1.15.1"
+tui = { version = "0.19", features = ["crossterm"], default-features = false }
+solana-sdk = "1.15"
 solana_gossip_proto = { path = "../proto" }
 
 [[bin]]

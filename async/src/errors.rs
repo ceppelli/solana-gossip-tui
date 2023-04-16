@@ -6,10 +6,14 @@ pub type Error = ErrorKind;
 
 #[derive(Debug, Error)]
 pub enum ErrorKind {
-    #[error("Invalid input parameter:{input}")]
-    InputError{
-      input: String,
-    },
+    #[error("Invalid input parameter")]
+    InputError,
+
+    #[error("Timeout error")]
+    TimeouttError,
+
+    #[error(transparent)]
+    AddrParseError(#[from] std::net::AddrParseError),
 
     #[error(transparent)]
     IoError(#[from] std::io::Error),

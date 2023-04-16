@@ -1,6 +1,6 @@
 [package]
 name = "solana_gossip_proto"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 authors = ["Luca Ceppelli <ceppelli@gmail.com>"]
 description = """
@@ -14,10 +14,10 @@ repository = "https://github.com/ceppelli/solana-gossip-tui"
 
 [dependencies]
 thiserror = "1.0"
-solana-sdk = "1.15.1"
-solana-bloom = "1.15.1"
-serde = "1.0.144"
-serde_derive = "1.0.103"
-bv = { version = "0.11.1", features = ["serde"] }
-bincode = "1.3.3"
+solana-sdk = "1.15"
+solana-bloom = "1.15"
+serde = "1.0"
+serde_derive = "1.0"
+bv = { version = "0.11", features = ["serde"] }
+bincode = "1.3"
 

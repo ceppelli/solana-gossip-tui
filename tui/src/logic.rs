@@ -179,28 +179,4 @@ fn send_pong_response(
             }
         }
     }
-
-    // if trace {
-    //     println!("# PingMessage ping:{ping:?}");
-    // }
-
-    // //let pong_r = Pong::new(ping, keypair);
-
-    // if let Ok(pong) = pong_r {
-    //     let proto_pong = Protocol::PongMessage(pong);
-
-    //     let mut data = Payload::default();
-    //     let r = data.populate_packet(Some(from_addr), &proto_pong);
-
-    //     match r {
-    //         Ok(_) => {
-    //             tx.send(data).unwrap_or(());
-    //         }
-    //         Err(err) => {
-    //             if trace {
-    //                 println!("# index:{counter} err:{err:?}");
-    //             }
-    //         }
-    //     }
-    // }
 }

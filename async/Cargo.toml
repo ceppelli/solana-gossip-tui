@@ -1,6 +1,6 @@
 [package]
 name = "solana_gossip_async"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 authors = ["Luca Ceppelli <ceppelli@gmail.com>"]
 description = """
@@ -14,9 +14,11 @@ repository = "https://github.com/ceppelli/solana-gossip-tui"
 
 [dependencies]
 thiserror = "1.0"
-tokio = { version = "1", features = ["io-util", "rt-multi-thread", "macros"]}
-udpflow = "0.1.0"
-solana-sdk = "1.15.1"
+clap = { version = "4.0", features = ["derive"] }
+#clap = "4.0"
+tokio = { version = "1.27", features = ["io-util", "rt-multi-thread", "macros"]}
+udpflow = "0.1"
+solana-sdk = "1.15"
 solana_gossip_proto = { path = "../proto" }
 
 [[bin]]

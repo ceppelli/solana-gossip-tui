@@ -8,15 +8,18 @@ use solana_gossip_proto::{
 };
 use solana_sdk::{signature::Keypair, signer::Signer};
 
-use crate::{connection::Connection, errors::Result};
+use crate::{
+    connection::Connection,
+    errors::{Error, Result},
+};
 
 const UDP_TIMEOUT: u64 = 200; // 200msec
+const HANDSHAKE_TIMEOUT: u64 = 5000; // 5sec
 
 pub async fn handshake(conn: &mut Connection) -> Result<Option<Box<LegacyContactInfo>>> {
     let keypair = Keypair::new();
     let shred_version: u16 = 0;
 
-    // let entrypoint_addr = conn.entrypoint_addr();
     let local_addr = conn.local_addr();
     let entrypoint_addr = conn.entrypoint_addr();
 
@@ -42,6 +45,8 @@ pub async fn handshake(conn: &mut Connection) -> Result<Option<Box<LegacyContact
 
             println!("[handshake] pong has been sended.");
 
+            let now = since_the_epoch_millis();
+
             loop {
                 if let Ok(Ok(Some(payload))) =
                     timeout(Duration::from_millis(UDP_TIMEOUT), conn.receive()).await
@@ -57,6 +62,10 @@ pub async fn handshake(conn: &mut Connection) -> Result<Option<Box<LegacyContact
                             }
                         }
                     }
+                }
+
+                if now + HANDSHAKE_TIMEOUT < since_the_epoch_millis() {
+                    return Err(Error::TimeouttError);
                 }
 
                 let payload = create_pull_request(contact_info.clone(), &keypair, entrypoint_addr)?;
