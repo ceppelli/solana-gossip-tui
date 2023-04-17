@@ -337,7 +337,14 @@ impl fmt::Display for Protocol {
 //tests
 #[cfg(test)]
 mod tests {
+
+    use crate::{
+        utils::parse_addr,
+        wire::{Payload, PACKET_DATA_SIZE},
+    };
+
     use super::*;
+
     #[test]
     fn test_sigh_crds_data() {
         let keypair = Keypair::new();
@@ -358,5 +365,232 @@ mod tests {
         let crds_filter = CrdsFilter::default();
         assert_eq!(crds_filter.filter.keys.len(), 3);
         assert_eq!(crds_filter.filter.bits.len(), 6168);
+    }
+
+    fn create_payload(message: &[u8]) -> Payload {
+        let mut buf = [0; PACKET_DATA_SIZE];
+
+        for i in 0..message.len() {
+            buf[i] = message[i];
+        }
+
+        Payload {
+            len: message.len(),
+            buf: buf,
+            addr: None,
+        }
+    }
+
+    #[test]
+    fn test_parse_ping_message() {
+        let data: [u8; 132] = [
+            4, 0, 0, 0, 45, 131, 47, 219, 149, 49, 155, 106, 97, 226, 218, 35, 162, 99, 206, 62,
+            17, 16, 64, 97, 253, 253, 30, 222, 252, 76, 178, 6, 138, 52, 128, 179, 38, 30, 158, 50,
+            165, 43, 25, 99, 111, 86, 255, 205, 9, 26, 172, 148, 39, 156, 77, 29, 249, 24, 215,
+            131, 25, 118, 137, 235, 115, 151, 92, 213, 245, 63, 206, 10, 124, 58, 104, 123, 10, 32,
+            125, 1, 213, 224, 191, 85, 226, 252, 58, 47, 7, 196, 237, 134, 67, 108, 179, 237, 117,
+            190, 149, 223, 197, 234, 29, 57, 254, 0, 99, 108, 107, 18, 62, 97, 139, 191, 68, 203,
+            139, 145, 26, 3, 244, 197, 183, 237, 161, 215, 95, 61, 41, 40, 240, 9,
+        ];
+
+        let ping_payload = create_payload(&data);
+
+        let protocol: Protocol = ping_payload.deserialize_slice(..).unwrap();
+
+        assert!(matches!(protocol, Protocol::PingMessage(_)));
+
+        if let Protocol::PingMessage(ping) = protocol {
+
+            assert_eq!(
+                ping.from.to_string(),
+                "44fNPdtMtRDhRcfsNqxa5d5ZjifbM1WRjUxszxwFuY2W"
+            );
+
+            assert_eq!(
+                ping.token.as_ref(),
+                [
+                    38, 30, 158, 50, 165, 43, 25, 99, 111, 86, 255, 205, 9, 26, 172, 148, 39, 156,
+                    77, 29, 249, 24, 215, 131, 25, 118, 137, 235, 115, 151, 92, 213
+                ]
+            );
+
+            assert_eq!(
+                ping.signature.to_string(),
+                "5uPm96J4wQtzSH6ZNmGpKzquVyn6bxxWxhPAT7dKXfgwHPHccP9r58mNDkcYY4cE2Aq5z2EDWpYRdMxcqnxGQ7Jp"
+            );
+        }
+    }
+
+    #[test]
+    fn test_parse_pong_message() {
+        let data: [u8; 132] = [
+            5, 0, 0, 0, 70, 169, 196, 250, 151, 211, 95, 114, 127, 13, 26, 92, 75, 254, 147, 166,
+            226, 150, 61, 171, 211, 234, 162, 18, 32, 116, 139, 166, 18, 174, 253, 4, 38, 30, 158,
+            50, 165, 43, 25, 99, 111, 86, 255, 205, 9, 26, 172, 148, 39, 156, 77, 29, 249, 24, 215,
+            131, 25, 118, 137, 235, 115, 151, 92, 213, 200, 133, 90, 144, 232, 103, 227, 143, 86,
+            114, 147, 53, 96, 79, 89, 202, 181, 214, 161, 91, 97, 87, 191, 228, 14, 176, 112, 215,
+            44, 35, 85, 214, 171, 251, 159, 61, 11, 126, 205, 109, 121, 193, 237, 15, 116, 115, 8,
+            103, 169, 148, 238, 32, 53, 113, 144, 171, 85, 209, 62, 173, 103, 61, 11, 13,
+        ];
+
+        let pong_payload = create_payload(&data);
+
+        let protocol: Protocol = pong_payload.deserialize_slice(..).unwrap();
+
+        assert!(matches!(protocol, Protocol::PongMessage(_)));
+
+        if let Protocol::PongMessage(pong) = protocol {
+
+            assert_eq!(
+                pong.from.to_string(),
+                "5kqgfKSazLt43S4n7rXUh61gn53iphQEam6bPaC5sFSs"
+            );
+
+            assert_eq!(
+                pong.hash.as_ref(),
+                [
+                    38, 30, 158, 50, 165, 43, 25, 99, 111, 86, 255, 205, 9, 26, 172, 148, 39, 156,
+                    77, 29, 249, 24, 215, 131, 25, 118, 137, 235, 115, 151, 92, 213
+                ]
+            );
+
+            assert_eq!(
+                pong.signature.to_string(),
+                "51XToRs3vtodBVWAEzSRBqe9GmuhHD2DLgSuNFbSw1DvwwWyoFfxHMLtgHEYYVg2wGP9pnJnyjatDUsKSGd8hj48"
+            );
+        }
+    }
+
+    #[test]
+    fn test_parse_pull_request_legacy_contact_info_message() {
+        let data: [u8; 1059] = [
+            0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 126, 197, 47, 13, 227, 109, 122, 142, 229, 56, 81,
+            25, 196, 11, 29, 6, 214, 122, 73, 198, 169, 82, 146, 145, 1, 97, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 24, 24, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 255, 255, 255, 255, 255, 255, 255, 255, 0, 0, 0, 0, 80,
+            42, 249, 175, 45, 221, 168, 114, 243, 212, 66, 241, 218, 160, 254, 182, 128, 223, 59,
+            253, 34, 71, 131, 25, 253, 76, 112, 50, 59, 142, 172, 130, 155, 85, 5, 44, 232, 125,
+            46, 185, 76, 215, 230, 234, 24, 246, 98, 58, 36, 127, 28, 208, 97, 121, 248, 212, 151,
+            20, 172, 33, 70, 112, 186, 2, 0, 0, 0, 0, 155, 254, 11, 8, 32, 208, 97, 52, 188, 96,
+            144, 20, 246, 12, 209, 9, 12, 235, 69, 54, 59, 23, 123, 8, 166, 154, 73, 15, 28, 252,
+            111, 210, 0, 0, 0, 0, 10, 20, 30, 40, 40, 35, 0, 0, 0, 0, 0, 0, 0, 0, 41, 35, 0, 0, 0,
+            0, 0, 0, 0, 0, 42, 35, 0, 0, 0, 0, 0, 0, 0, 0, 43, 35, 0, 0, 0, 0, 0, 0, 0, 0, 44, 35,
+            0, 0, 0, 0, 0, 0, 0, 0, 45, 35, 0, 0, 0, 0, 0, 0, 0, 0, 46, 35, 0, 0, 0, 0, 0, 0, 0, 0,
+            47, 35, 0, 0, 0, 0, 0, 0, 0, 0, 48, 35, 0, 0, 0, 0, 0, 0, 0, 0, 49, 35, 227, 189, 238,
+            143, 135, 1, 0, 0, 0, 0,
+        ];
+
+        let info_payload = create_payload(&data);
+
+        let protocol: Protocol = info_payload.deserialize_slice(..).unwrap();
+
+        assert!(matches!(protocol, Protocol::PullRequest(_, _)));
+
+        if let Protocol::PullRequest(_, crds_value) = protocol {
+            let crds_data = crds_value.data;
+            assert!(matches!(crds_data, CrdsData::LegacyContactInfo(_,)));
+
+            if let CrdsData::LegacyContactInfo(info) = crds_data {
+
+                assert_eq!(
+                    info.id.to_string(),
+                    "BVvsUC7bcugkAE71bpDpDNpZuwsqY35syesvPtjShPDs"
+                );
+
+                assert_eq!(info.gossip, parse_addr("10.20.30.40:9000").unwrap());
+                assert_eq!(info.tvu, parse_addr("0.0.0.0:9001").unwrap());
+                assert_eq!(info.tvu_forwards, parse_addr("0.0.0.0:9002").unwrap());
+                assert_eq!(info.repair, parse_addr("0.0.0.0:9003").unwrap());
+                assert_eq!(info.tpu, parse_addr("0.0.0.0:9004").unwrap());
+                assert_eq!(info.tpu_forwards, parse_addr("0.0.0.0:9005").unwrap());
+                assert_eq!(info.tpu_vote, parse_addr("0.0.0.0:9006").unwrap());
+                assert_eq!(info.rpc, parse_addr("0.0.0.0:9007").unwrap());
+                assert_eq!(info.rpc_pubsub, parse_addr("0.0.0.0:9008").unwrap());
+                assert_eq!(info.serve_repair, parse_addr("0.0.0.0:9009").unwrap());
+                assert_eq!(info.wallclock, 1681747000803);
+                assert_eq!(info.shred_version, 0);
+            }
+        }
+    }
+
+    #[test]
+    fn test_parse_pull_response_legacy_contact_info_message() {
+        let data: [u8; 254] = [
+            1, 0, 0, 0, 112, 26, 219, 83, 31, 191, 215, 27, 61, 28, 154, 238, 134, 84, 53, 138,
+            195, 64, 71, 69, 95, 125, 193, 73, 179, 255, 150, 187, 36, 104, 203, 159, 1, 0, 0, 0,
+            0, 0, 0, 0, 172, 61, 20, 10, 235, 51, 78, 30, 32, 0, 105, 177, 9, 21, 226, 180, 29, 16,
+            180, 75, 163, 224, 125, 153, 119, 46, 90, 32, 81, 151, 51, 224, 124, 232, 126, 52, 44,
+            79, 157, 174, 46, 105, 221, 63, 234, 190, 12, 84, 97, 71, 141, 68, 26, 61, 82, 14, 196,
+            148, 193, 107, 54, 79, 142, 15, 0, 0, 0, 0, 112, 26, 219, 83, 31, 191, 215, 27, 61, 28,
+            154, 238, 134, 84, 53, 138, 195, 64, 71, 69, 95, 125, 193, 73, 179, 255, 150, 187, 36,
+            104, 203, 159, 0, 0, 0, 0, 10, 20, 30, 40, 40, 35, 0, 0, 0, 0, 0, 0, 0, 0, 41, 35, 0,
+            0, 0, 0, 0, 0, 0, 0, 42, 35, 0, 0, 0, 0, 0, 0, 0, 0, 43, 35, 0, 0, 0, 0, 0, 0, 0, 0,
+            44, 35, 0, 0, 0, 0, 0, 0, 0, 0, 45, 35, 0, 0, 0, 0, 0, 0, 0, 0, 46, 35, 0, 0, 0, 0, 0,
+            0, 0, 0, 47, 35, 0, 0, 0, 0, 0, 0, 0, 0, 48, 35, 0, 0, 0, 0, 0, 0, 0, 0, 49, 35, 128,
+            43, 246, 143, 135, 1, 0, 0, 0, 0,
+        ];
+
+        let info_payload = create_payload(&data);
+
+        let protocol: Protocol = info_payload.deserialize_slice(..).unwrap();
+
+        assert!(matches!(protocol, Protocol::PullResponse(_, _)));
+
+        if let Protocol::PullResponse(pubkey, crds_values) = protocol {
+            assert_eq!(
+                pubkey.to_string(),
+                "8YcR2zEgUXYkKBtnWCSWM3Hbycu6RMqNvi9sGJmvezQE"
+            );
+
+            let crds_data = &crds_values[0].data;
+            assert!(matches!(crds_data, CrdsData::LegacyContactInfo(_,)));
+
+            if let CrdsData::LegacyContactInfo(info) = crds_data {
+
+                assert_eq!(
+                    info.id.to_string(),
+                    "8YcR2zEgUXYkKBtnWCSWM3Hbycu6RMqNvi9sGJmvezQE"
+                );
+
+                assert_eq!(info.gossip, parse_addr("10.20.30.40:9000").unwrap());
+                assert_eq!(info.tvu, parse_addr("0.0.0.0:9001").unwrap());
+                assert_eq!(info.tvu_forwards, parse_addr("0.0.0.0:9002").unwrap());
+                assert_eq!(info.repair, parse_addr("0.0.0.0:9003").unwrap());
+                assert_eq!(info.tpu, parse_addr("0.0.0.0:9004").unwrap());
+                assert_eq!(info.tpu_forwards, parse_addr("0.0.0.0:9005").unwrap());
+                assert_eq!(info.tpu_vote, parse_addr("0.0.0.0:9006").unwrap());
+                assert_eq!(info.rpc, parse_addr("0.0.0.0:9007").unwrap());
+                assert_eq!(info.rpc_pubsub, parse_addr("0.0.0.0:9008").unwrap());
+                assert_eq!(info.serve_repair, parse_addr("0.0.0.0:9009").unwrap());
+                assert_eq!(info.wallclock, 1681747487616);
+                assert_eq!(info.shred_version, 0);
+            }
+        }
     }
 }
