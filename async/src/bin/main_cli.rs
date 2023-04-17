@@ -7,6 +7,7 @@ use solana_gossip_async::{connection::Connection, handshake::handshake};
 use solana_gossip_proto::utils::parse_addr;
 
 fn parse_socket_addr(value: &str) -> ::std::result::Result<std::net::SocketAddr, std::io::Error> {
+    println!("{value}");
     if let Some(addr) = parse_addr(value) {
         Ok(addr)
     } else {
@@ -27,13 +28,13 @@ async fn main() -> Result<()> {
 
     let matches = Command::new("solana gossip async")
         .arg(
-            arg!(--e <VALUE>)
+            arg!(--entrypoint <VALUE> "a entrpoint address")
                 .default_value("141.98.219.218:8000")
                 .value_parser(clap::builder::ValueParser::new(parse_socket_addr)),
         )
         .get_matches();
 
-    let Some(entrypoint_addr) = matches.get_one::<std::net::SocketAddr>("e") else {
+    let Some(entrypoint_addr) = matches.get_one::<std::net::SocketAddr>("entrypoint") else {
         return Err(Error::InputError);
     };
 
