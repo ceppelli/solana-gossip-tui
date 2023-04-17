@@ -1,12 +1,10 @@
 mod app;
 mod common;
 mod logic;
-mod protocol;
 mod stm;
 mod terminal;
 mod transport;
 mod ui;
-mod utils;
 
 use std::{
     io,
@@ -15,13 +13,14 @@ use std::{
 };
 
 use crossterm::event::{self, Event, KeyCode};
+use log::error;
+use solana_gossip_proto::protocol::{LegacyContactInfo, LegacyVersion2};
 use tui::{backend::Backend, Terminal};
 
 use crate::{
     app::Context,
     common::{init_threads, Data},
     logic::RECV_TIMEOUT,
-    protocol::{LegacyContactInfo, LegacyVersion2},
     stm::{events, stm_main::MainStm, States},
     transport::{CtrlCmd, Stats},
 };
@@ -42,7 +41,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // check for errors
     if let Err(err) = res {
-        println!("[main] {:?} {err:?}", ctx.info());
+        error!("{:?} {err}", ctx.info());
     }
 
     // restore terminal state

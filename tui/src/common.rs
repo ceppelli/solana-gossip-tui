@@ -1,17 +1,22 @@
 use std::{
     io,
-    net::{IpAddr, Ipv4Addr, SocketAddr, ToSocketAddrs, UdpSocket},
+    net::{IpAddr, Ipv4Addr, SocketAddr, UdpSocket},
     sync::{mpsc, Arc},
     thread::JoinHandle,
     time::Duration,
 };
 
-use crate::logic::spawn_logic;
-use crate::transport::{receiver::spawn_receiver, sender::spawn_sender, CtrlCmd, Payload, Stats};
-use crate::{
-    app::Context,
+use log::trace;
+
+use solana_gossip_proto::{
     protocol::{LegacyContactInfo, Version},
+    utils::parse_addr,
+    wire::Payload,
 };
+
+use crate::app::Context;
+use crate::logic::spawn_logic;
+use crate::transport::{receiver::spawn_receiver, sender::spawn_sender, CtrlCmd, Stats};
 
 #[derive(Debug)]
 pub enum Data {
@@ -50,9 +55,7 @@ pub fn init_threads(
     socket.set_read_timeout(Some(Duration::from_millis(1000)))?;
 
     let socket = Arc::new(socket);
-    if ctx.trace {
-        println!("[main] gossip_addr:{gossip_local_listener_addr:?}");
-    }
+    trace!("[main] gossip_addr:{gossip_local_listener_addr:?}");
 
     // receiver
     let (ctrl_sender_tx, ctrl_sender_rx) = mpsc::channel::<CtrlCmd>();
@@ -73,15 +76,13 @@ pub fn init_threads(
 
     let (data_tx, data_rx) = mpsc::channel::<Data>();
 
-    let trace = ctx.trace;
     let receiver_t = spawn_receiver(
         socket.clone(),
         receiver_tx,
         ctrl_receiver_rx,
         stats_tx.clone(),
-        trace,
     )?;
-    let sender_t = spawn_sender(socket, sender_rx, ctrl_sender_rx, stats_tx.clone(), trace)?;
+    let sender_t = spawn_sender(socket, sender_rx, ctrl_sender_rx, stats_tx.clone())?;
     let logic_t = spawn_logic(
         gossip_local_listener_addr,
         entrypoint_addr,
@@ -90,62 +91,7 @@ pub fn init_threads(
         ctrl_logic_rx,
         stats_tx,
         data_tx,
-        trace,
     )?;
 
     Ok((data_rx, stats_rx, vec![receiver_t, sender_t, logic_t]))
-}
-
-pub fn parse_addr(addr: &str) -> Option<SocketAddr> {
-    let addrs = addr
-        .to_socket_addrs()
-        .unwrap_or(Vec::new().into_iter())
-        .collect::<Vec<SocketAddr>>();
-    addrs.first().copied()
-}
-
-//tests
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_parse_addr() {
-        assert_eq!(
-            parse_addr("entrypoint.devnet.solana.com:8001"),
-            Some(SocketAddr::new(
-                IpAddr::V4(Ipv4Addr::new(35, 197, 53, 105)),
-                8001
-            ))
-        );
-
-        assert_eq!(
-            parse_addr("entrypoint.testnet.solana.com:8001"),
-            Some(SocketAddr::new(
-                IpAddr::V4(Ipv4Addr::new(35, 203, 170, 30)),
-                8001
-            ))
-        );
-
-        assert_eq!(
-            parse_addr("entrypoint.mainnet-beta.solana.com:8001"),
-            Some(SocketAddr::new(
-                IpAddr::V4(Ipv4Addr::new(34, 83, 231, 102)),
-                8001
-            ))
-        );
-
-        assert_eq!(
-            parse_addr("141.98.219.218:8000"),
-            Some(SocketAddr::new(
-                IpAddr::V4(Ipv4Addr::new(141, 98, 219, 218)),
-                8000
-            ))
-        );
-    }
-
-    #[test]
-    fn test_parse_addr_invalid() {
-        assert_eq!(parse_addr("host,8000"), None);
-    }
 }

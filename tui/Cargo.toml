@@ -1,0 +1,27 @@
+[package]
+name = "solana_gossip_tui"
+version = "0.1.1"
+edition = "2021"
+authors = ["Luca Ceppelli <ceppelli@gmail.com>"]
+description = """
+An attempt to reverse engineer the Solana Gossip protocol
+"""
+readme = "README.md"
+license = "MIT"
+keywords = [ "solana", "gossip", "blockchain", "tui"]
+categories = ["cli"]
+repository = "https://github.com/ceppelli/solana-gossip-tui"
+
+default-run = "solana_gossip_tui"
+
+[dependencies]
+log = "0.4"
+simple_logger = "4.1"
+crossterm = { version = "0.25", features = ["event-stream"], optional = false }
+tui = { version = "0.19", features = ["crossterm"], default-features = false }
+solana-sdk = "1.15"
+solana_gossip_proto = { path = "../proto" }
+
+[[bin]]
+name = "solana_gossip_tui"
+path = "src/main.rs"

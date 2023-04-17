@@ -1,0 +1,23 @@
+[package]
+name = "solana_gossip_proto"
+version = "0.1.1"
+edition = "2021"
+authors = ["Luca Ceppelli <ceppelli@gmail.com>"]
+description = """
+An attempt to reverse engineer the Solana Gossip protocol
+"""
+readme = "README.md"
+license = "MIT"
+keywords = [ "solana", "gossip", "blockchain", "tui"]
+categories = ["library"]
+repository = "https://github.com/ceppelli/solana-gossip-tui"
+
+[dependencies]
+thiserror = "1.0"
+solana-sdk = "1.15"
+solana-bloom = "1.15"
+serde = "1.0"
+serde_derive = "1.0"
+bv = { version = "0.11", features = ["serde"] }
+bincode = "1.3"
+

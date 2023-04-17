@@ -8,14 +8,17 @@ use std::{
     thread::{Builder, JoinHandle},
 };
 
-use crate::transport::{CtrlCmd, Payload, Stats, StatsId, RECV_TIMEOUT};
+use log::trace;
+
+use solana_gossip_proto::wire::Payload;
+
+use crate::transport::{CtrlCmd, Stats, StatsId, RECV_TIMEOUT};
 
 pub(crate) fn spawn_sender(
     socket: Arc<UdpSocket>,
     rx: Receiver<Payload>,
     ctrl_rx: Receiver<CtrlCmd>,
     stats_tx: Sender<Stats>,
-    trace: bool,
 ) -> io::Result<JoinHandle<()>> {
     Builder::new()
         .name("udp_sender_t".to_string())
@@ -34,9 +37,7 @@ pub(crate) fn spawn_sender(
                                 })
                                 .unwrap_or(());
 
-                            if trace {
-                                println!("[udp_sender_t] message processed:{counter}");
-                            }
+                            trace!("message processed:{counter}");
                         }
                     }
                 }
@@ -45,9 +46,7 @@ pub(crate) fn spawn_sender(
                     if let Some(addr) = data.addr {
                         if let Some(buf) = data.data(..) {
                             if let Err(err) = socket.send_to(buf, addr) {
-                                if trace {
-                                    println!("[udp_sender_t] index:{counter} sending err:{err:?}");
-                                }
+                                trace!("counter:{counter} sending err:{err:?}");
                             }
 
                             counter += 1;
@@ -56,8 +55,6 @@ pub(crate) fn spawn_sender(
                 }
             }
 
-            if trace {
-                println!("[udp_sender_t]  index:{counter} terminated");
-            }
+            trace!("counter:{counter} terminated");
         })
 }

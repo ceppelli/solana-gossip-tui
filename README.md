@@ -139,8 +139,31 @@ Pressing the `q` key the application will be terminate.
 ### Show help message
 At any time inside the running binary press the `?` key and a contextual help view will be displayed.
 
+--
+
+## Async Client
+
+The **solana_gossip_async** crate implements an async version of the library.
+
+To test it run the **solana-gossip-async** single binary.
+
+### Run solana-gossip-async
+```
+solana_gossip_async
+```
+
+It is also possible to specify the entrypoint address as parameter
+
+### Run solana-gossip-async
+```
+solana_gossip_async --entrypoint entrypoint.devnet.solana.com:8001
+```
+
+The client tries to connect to the Solana Gossip Validator entrypoint and affer the initial handshake has been completed, it will process the incoming messages until the first **pull response legacy contact info** is received.
 
 
+![Entrypoints Selection View](assets/solana-gossip-async.png)
+--
 
 ## License
 

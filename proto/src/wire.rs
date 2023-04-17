@@ -1,29 +1,9 @@
-pub(crate) mod receiver;
-pub(crate) mod sender;
+use std::{io, net::SocketAddr, slice::SliceIndex};
 
-use std::{io, net::SocketAddr, slice::SliceIndex, time::Duration};
-
-use bincode::{Options, Result as BincodeResult};
+use bincode::Options;
 use serde::Serialize;
 
-#[derive(Debug)]
-#[allow(dead_code)]
-pub enum CtrlCmd {
-    Stop,
-    Counter,
-}
-
-#[derive(Debug)]
-pub enum StatsId {
-    Receiver,
-    Sender,
-    Logic,
-}
-
-pub struct Stats {
-    pub id: StatsId,
-    pub counter: u32,
-}
+use crate::errors::Result;
 
 /// Maximum over-the-wire size of a Transaction
 ///   1280 is IPv6 minimum MTU
@@ -50,11 +30,11 @@ impl Default for Payload {
 
 impl Payload {
     #[allow(clippy::cast_possible_truncation)]
-    pub(crate) fn populate_packet<T: Serialize>(
+    pub fn populate_packet<T: Serialize>(
         &mut self,
         dest: Option<SocketAddr>,
         data: &T,
-    ) -> BincodeResult<()> {
+    ) -> Result<()> {
         let mut wr = io::Cursor::new(self.buffer_mut());
         let r = bincode::serialize_into(&mut wr, data);
         match r {
@@ -63,24 +43,27 @@ impl Payload {
                 self.addr = dest;
             }
             Err(err) => {
-                return Err(err);
+                return Err(err.into());
             }
         }
 
         Ok(())
     }
 
-    pub(crate) fn deserialize_slice<T, I>(&self, index: I) -> BincodeResult<T>
+    pub fn deserialize_slice<T, I>(&self, index: I) -> Result<T>
     where
         T: serde::de::DeserializeOwned,
         I: SliceIndex<[u8], Output = [u8]>,
     {
-        let bytes = self.data(index).ok_or(bincode::ErrorKind::SizeLimit)?;
+        let bytes = self
+            .data(index)
+            .ok_or(bincode::Error::from(bincode::ErrorKind::SizeLimit))?;
         bincode::options()
             .with_limit(PACKET_DATA_SIZE as u64)
             .with_fixint_encoding()
             .reject_trailing_bytes()
             .deserialize(bytes)
+            .map_err(std::convert::Into::into)
     }
 
     #[inline]
@@ -96,5 +79,3 @@ impl Payload {
         self.buf.get(..self.len)?.get(index)
     }
 }
-
-const RECV_TIMEOUT: Duration = Duration::from_millis(1000);
