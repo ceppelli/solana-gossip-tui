@@ -13,6 +13,7 @@ use std::{
 };
 
 use crossterm::event::{self, Event, KeyCode};
+use log::error;
 use solana_gossip_proto::protocol::{LegacyContactInfo, LegacyVersion2};
 use tui::{backend::Backend, Terminal};
 
@@ -40,7 +41,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // check for errors
     if let Err(err) = res {
-        println!("[main] {:?} {err:?}", ctx.info());
+        error!("{:?} {err}", ctx.info());
     }
 
     // restore terminal state

@@ -6,6 +6,8 @@ use std::{
     thread::{Builder, JoinHandle},
 };
 
+use log::{error, trace};
+
 use solana_gossip_proto::wire::{Payload, PACKET_DATA_SIZE};
 
 use crate::transport::{CtrlCmd, Stats, StatsId};
@@ -15,7 +17,6 @@ pub(crate) fn spawn_receiver(
     tx: Sender<Payload>,
     ctrl_rx: Receiver<CtrlCmd>,
     stats_tx: Sender<Stats>,
-    trace: bool,
 ) -> io::Result<JoinHandle<()>> {
     Builder::new()
         .name("udp_receiver_t".to_string())
@@ -34,9 +35,7 @@ pub(crate) fn spawn_receiver(
                                 })
                                 .unwrap_or(());
 
-                            if trace {
-                                println!("[udp_receiver_t] message processed:{counter}");
-                            }
+                            trace!("message processed:{counter}");
                         }
                     }
                 }
@@ -45,20 +44,10 @@ pub(crate) fn spawn_receiver(
 
                 match socket.recv_from(&mut buf) {
                     Ok((len, addr)) => {
-                        // if trace {
-                        //   println!(
-                        //     "[udp_receiver_t] index:{index} received addr:{:?} len:{len} bytes {:?}",
-                        //     addr,
-                        //     &buf[..len]
-                        //   );
-                        // }
-
-                        // if trace && len == 254 {
-                        //   println!(
-                        //     "[udp_receiver_t] index:{index} received addr:{:?} len:{len}",
-                        //     addr
-                        //   );
-                        // }
+                        trace!(
+                            "counter:{counter} received addr:{addr:?} len:{len} bytes {:?}",
+                            &buf[..len]
+                        );
 
                         let include: Vec<usize> = vec![
                             132, // PingMessage / PongMessage
@@ -91,15 +80,11 @@ pub(crate) fn spawn_receiver(
                         counter += 1;
                     }
                     Err(err) => {
-                        if trace {
-                            println!("[udp_receiver_t] index:{counter} recv function err:{err:?}");
-                        }
+                        error!("index:{counter} recv function err:{err}");
                     }
                 }
             }
 
-            if trace {
-                println!("[udp_receiver_t] index:{counter} terminated");
-            }
+            trace!("index:{counter} terminated");
         })
 }

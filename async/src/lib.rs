@@ -2,5 +2,5 @@
 #![allow(clippy::missing_errors_doc)]
 #![allow(clippy::must_use_candidate)]
 pub mod connection;
-pub mod handshake;
 pub mod errors;
+pub mod handshake;

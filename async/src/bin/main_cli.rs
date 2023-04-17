@@ -1,8 +1,10 @@
-use solana_gossip_async::errors::{Result, Error};
+use clap::{arg, Command};
+use log::{error, info, LevelFilter};
+use simple_logger::SimpleLogger;
+
+use solana_gossip_async::errors::{Error, Result};
 use solana_gossip_async::{connection::Connection, handshake::handshake};
 use solana_gossip_proto::utils::parse_addr;
-
-use clap::{arg, Command};
 
 fn parse_socket_addr(value: &str) -> ::std::result::Result<std::net::SocketAddr, std::io::Error> {
     if let Some(addr) = parse_addr(value) {
@@ -17,7 +19,13 @@ fn parse_socket_addr(value: &str) -> ::std::result::Result<std::net::SocketAddr,
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let matches = Command::new("clap-test")
+    SimpleLogger::new()
+        .with_level(LevelFilter::Info)
+        .with_colors(true)
+        .init()
+        .unwrap();
+
+    let matches = Command::new("solana gossip async")
         .arg(
             arg!(--e <VALUE>)
                 .default_value("141.98.219.218:8000")
@@ -34,10 +42,10 @@ async fn main() -> Result<()> {
     let info = handshake(&mut conn).await;
     match info {
         Ok(Some(info)) => {
-            println!("[main] OK {info:?}");
+            info!("OK {info:?}");
         }
         Err(err) => {
-            println!("[main] exists with error:{err:?}")
+            error!("exists with error:{err}")
         }
         _ => {}
     }

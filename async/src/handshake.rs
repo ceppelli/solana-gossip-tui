@@ -1,5 +1,6 @@
 use std::time::Duration;
 
+use log::info;
 use tokio::time::timeout;
 
 use solana_gossip_proto::{
@@ -23,7 +24,7 @@ pub async fn handshake(conn: &mut Connection) -> Result<Option<Box<LegacyContact
     let local_addr = conn.local_addr();
     let entrypoint_addr = conn.entrypoint_addr();
 
-    println!("[handshake] local_addr:{local_addr:?} entrypoint_addr:{entrypoint_addr:?}");
+    info!("local_addr:{local_addr:?} entrypoint_addr:{entrypoint_addr:?}");
 
     let contact_info = LegacyContactInfo {
         id: keypair.pubkey(),
@@ -43,7 +44,7 @@ pub async fn handshake(conn: &mut Connection) -> Result<Option<Box<LegacyContact
 
             conn.send(pong_payload).await?;
 
-            println!("[handshake] pong has been sended.");
+            info!("pong has been sended.");
 
             let now = since_the_epoch_millis();
 
@@ -55,7 +56,7 @@ pub async fn handshake(conn: &mut Connection) -> Result<Option<Box<LegacyContact
 
                     if let Ok(Protocol::PullResponse(_, values)) = after_pong_protocol {
                         for value in values {
-                            println!("[handshake] message {value} has been reveived.");
+                            info!("message {value} has been received.");
 
                             if let CrdsData::LegacyContactInfo(info) = value.data {
                                 return Ok(Some(info));

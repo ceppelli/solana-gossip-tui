@@ -6,6 +6,8 @@ use std::{
     time::Duration,
 };
 
+use log::trace;
+
 use solana_gossip_proto::{
     protocol::{LegacyContactInfo, Version},
     utils::parse_addr,
@@ -53,9 +55,7 @@ pub fn init_threads(
     socket.set_read_timeout(Some(Duration::from_millis(1000)))?;
 
     let socket = Arc::new(socket);
-    if ctx.trace {
-        println!("[main] gossip_addr:{gossip_local_listener_addr:?}");
-    }
+    trace!("[main] gossip_addr:{gossip_local_listener_addr:?}");
 
     // receiver
     let (ctrl_sender_tx, ctrl_sender_rx) = mpsc::channel::<CtrlCmd>();
@@ -76,15 +76,13 @@ pub fn init_threads(
 
     let (data_tx, data_rx) = mpsc::channel::<Data>();
 
-    let trace = ctx.trace;
     let receiver_t = spawn_receiver(
         socket.clone(),
         receiver_tx,
         ctrl_receiver_rx,
         stats_tx.clone(),
-        trace,
     )?;
-    let sender_t = spawn_sender(socket, sender_rx, ctrl_sender_rx, stats_tx.clone(), trace)?;
+    let sender_t = spawn_sender(socket, sender_rx, ctrl_sender_rx, stats_tx.clone())?;
     let logic_t = spawn_logic(
         gossip_local_listener_addr,
         entrypoint_addr,
@@ -93,7 +91,6 @@ pub fn init_threads(
         ctrl_logic_rx,
         stats_tx,
         data_tx,
-        trace,
     )?;
 
     Ok((data_rx, stats_rx, vec![receiver_t, sender_t, logic_t]))

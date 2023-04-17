@@ -55,7 +55,9 @@ impl Payload {
         T: serde::de::DeserializeOwned,
         I: SliceIndex<[u8], Output = [u8]>,
     {
-        let bytes = self.data(index).ok_or(bincode::Error::from(bincode::ErrorKind::SizeLimit))?;
+        let bytes = self
+            .data(index)
+            .ok_or(bincode::Error::from(bincode::ErrorKind::SizeLimit))?;
         bincode::options()
             .with_limit(PACKET_DATA_SIZE as u64)
             .with_fixint_encoding()
